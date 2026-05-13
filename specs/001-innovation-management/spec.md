@@ -83,6 +83,9 @@ The app must run locally, protect secure routes behind authentication, and direc
 - How does the app behave when an already registered email is used for registration? It should show a friendly error and allow the user to choose a different email.
 - How does the app handle a submitter with no submitted ideas? The idea list should show a gentle empty state explaining that no ideas have been submitted yet.
 - How does the app behave when an admin updates the status of an idea that has already been accepted or rejected? The change should be allowed only if a valid status transition is selected.
+- What happens when attachment storage fails after idea form validation succeeds? The idea should not be finalized, the user should see a clear retry message, and entered non-file form data should be preserved.
+- What happens when an attachment file is missing from disk after submission? The app should show "file unavailable" feedback while preserving idea metadata visibility.
+- How does the app behave when two admins update the same idea at nearly the same time? The system should apply last-write-wins and display the latest persisted status and comments on refresh.
 
 ## Requirements (mandatory)
 
@@ -104,6 +107,14 @@ The app must run locally, protect secure routes behind authentication, and direc
 - **FR-014**: System MUST prevent submitters from submitting more than one attachment per idea.
 - **FR-015**: System MUST show validation feedback for required fields and attachment requirements.
 
+### Non-Functional Requirements
+
+- **NFR-001**: Session cookies MUST be HttpOnly and SameSite=Lax in local MVP, and session records MUST be invalidated on logout.
+- **NFR-002**: Session lifetime MUST be explicitly bounded for local MVP (default 12 hours).
+- **NFR-003**: Authentication, idea submission, and admin review screens MUST provide keyboard-accessible controls, visible focus states, and programmatically associated labels.
+- **NFR-004**: Validation errors MUST be presented as inline field-level feedback and a form-level summary when submission fails.
+- **NFR-005**: Upload UX MUST provide visible progress or loading feedback and return validation outcomes within 3 seconds for files up to 10MB on a standard local development machine.
+
 ### Key Entities
 
 - **User**: Represents a registered employee with a role of submitter or admin; owns submitted ideas and can authenticate.
@@ -121,6 +132,12 @@ The app must run locally, protect secure routes behind authentication, and direc
 - **SC-004**: The core submission and review flow is usable locally with no more than 3 manual steps for each role to complete their primary tasks.
 - **SC-005**: The app starts and serves locally without build or runtime errors on the intended local development environment.
 
+### Success Criteria Measurement Notes
+
+- **M-001**: Manual test pack size for SC-002 is 10 runs (5 submitter-scope, 5 admin-scope). Passing threshold is at least 9 of 10 successful runs.
+- **M-002**: Measurement set for SC-003 is 20 admin review actions sampled in one acceptance test cycle. Passing threshold is at least 19 of 20 actions succeeding.
+- **M-003**: SC-004 step count is measured only for primary tasks: submitter create-and-submit idea and admin review-and-update idea. Each primary task must complete in 3 or fewer user actions after authentication.
+
 ## Assumptions
 
 - User registration and login are part of the same application rather than delegated to an external identity provider for MVP.
@@ -128,4 +145,6 @@ The app must run locally, protect secure routes behind authentication, and direc
 - New registrations create submitter accounts only; admin accounts are provisioned separately via seeded or manual setup.
 - Categories for ideas are a fixed set: Technical Innovation, Process Improvement, Client Solution, and Other.
 - File attachments are limited to one per idea, stored locally with metadata in SQLite, capped at 10MB, and restricted to PDF, PNG, JPG, JPEG, or DOCX files.
+- Phase 1 attachment access uses public static URLs under `public/uploads`; protected download routing is explicitly out of scope.
+- Local environments provide write permissions for `public/uploads` and allow serving static files from that directory.
 - UI polish is not required; the primary goal is a working, usable experience for submitters and admins.

@@ -48,7 +48,7 @@
 
 ### Get Current Submitter Ideas
 - Method: `GET`
-- Path: `/api/ideas
+- Path: `/api/ideas`
 - Auth: submitter only
 - Response:
   - `200`: `{ ideas: [ { id, title, description, category, status, attachment, createdAt } ] }`
@@ -83,13 +83,16 @@
 
 ## Attachment Access
 
-### Download Attachment
+### Static Attachment URL (Phase 1)
 - Method: `GET`
 - Path: `/uploads/:filename`
-- Auth: submitter or admin depending on idea ownership and role
+- Auth: public static file access in local MVP
 - Response:
   - `200`: file stream
-  - `404`: `{ error: string }`
+  - `404`: file not found
+
+### Protected Download Route
+- Out of scope for Phase 1 MVP. Role-aware protected attachment delivery is deferred to a later phase.
 
 ## Session Contract
 
