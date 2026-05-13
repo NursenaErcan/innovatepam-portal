@@ -64,7 +64,7 @@
 
 ### Update Idea Status
 - Method: `PATCH`
-- Path: `/api/admin/ideas/:ideaId/status`
+- Path: `/api/admin/:ideaId/status`
 - Auth: admin only
 - Request body:
   - `status: "submitted" | "under review" | "accepted" | "rejected"`
@@ -74,7 +74,7 @@
 
 ### Add Evaluation Comment
 - Method: `POST`
-- Path: `/api/admin/ideas/:ideaId/comments`
+- Path: `/api/admin/:ideaId/comments`
 - Auth: admin only
 - Request body:
   - `commentText: string`

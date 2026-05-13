@@ -12,7 +12,6 @@
 
 ```bash
 npm install
-npm install prisma @prisma/client bcrypt
 ```
 
 2. Create a `.env` file in the repository root with:
@@ -26,13 +25,13 @@ UPLOAD_DIR="./public/uploads"
 3. Create the Prisma schema and apply the migration:
 
 ```bash
-npx prisma migrate dev --name init
+npm run db:migrate -- --name init
 ```
 
 4. Seed an admin account with the provided seed script:
 
 ```bash
-npx prisma db seed
+npm run db:seed
 ```
 
 The seed script should create one admin user:
@@ -43,7 +42,7 @@ The seed script should create one admin user:
 5. Create the upload directory:
 
 ```bash
-mkdir -p public/uploads
+mkdir public/uploads
 ```
 
 ## Running locally
