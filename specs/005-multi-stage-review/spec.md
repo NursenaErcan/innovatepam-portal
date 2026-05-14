@@ -130,14 +130,14 @@ As an admin, I do not see draft ideas in the review queue so that only formally 
 
 - **ReviewStage**: Represents a discrete stage in the review pipeline (Initial Screening, Technical Review, Business Impact Review, Final Decision). An idea holds a reference to its current stage.
 - **StageComment**: A piece of evaluator feedback attached to a specific idea and a specific review stage, with a timestamp and author identity.
-- **Idea (extended)**: Gains a `currentStage` attribute and a collection of `StageComment` entries; final states (Accepted, Rejected) disable stage transitions.
+- **Idea (extended)**: Gains a `reviewStage` attribute and a collection of `StageComment` entries; final states (Accepted, Rejected) disable stage transitions.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: Admins can transition a submitted idea through all four review stages in a single session without leaving the admin interface.
-- **SC-002**: Stage-specific comments submitted by an admin are visible to the submitter within the same session, without a page reload.
+- **SC-002**: Stage-specific comments submitted by an admin are visible to the submitter after navigating to the idea detail view.
 - **SC-003**: 100% of submitted ideas enter the Initial Screening stage automatically; zero submitted ideas bypass the pipeline.
 - **SC-004**: Draft ideas appear in the admin review queue at a rate of 0% — no draft ever surfaces in the pipeline.
 - **SC-005**: Accepted and Rejected ideas are immutable with respect to review stage; zero stage-change actions succeed on final-state ideas.

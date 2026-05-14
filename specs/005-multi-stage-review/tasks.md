@@ -63,7 +63,7 @@
 ### Implementation for User Story 2
 
 - [ ] T014 [US2] Implement `POST /api/admin/[ideaId]/stage-comments` in `app/api/admin/[ideaId]/stage-comments/route.ts`: validate non-empty `text` and valid `stage` enum value, reject draft ideas with `409`, persist `StageComment`, return created comment including `adminId`
-- [ ] T015 [P] [US2] Create `StageCommentForm` component in `app/components/stage-comment-form.tsx`: textarea for comment text, stage selector pre-filled with current idea stage, submit handler calling `POST /api/admin/{ideaId}/stage-comments`
+- [ ] T015 [P] [US2] Create `StageCommentForm` component in `app/components/stage-comment-form.tsx`: textarea for comment text, stage selector pre-filled with current idea stage, accepts `onSubmit(text: string, stage: ReviewStage) => void` callback prop — no direct API calls inside the component; all data-fetching logic stays in the parent `app/components/admin-ideas-panel.tsx`
 - [ ] T016 [P] [US2] Create `StageCommentList` component in `app/components/stage-comment-list.tsx`: accepts `comments: StageCommentEntry[]` and `showAdmin: boolean` props, renders comments ordered by `createdAt` ascending, displays stage label badge per comment
 - [ ] T017 [US2] Integrate `StageCommentForm` and `StageCommentList` (with `showAdmin=true`) into the admin idea detail section in `app/components/admin-ideas-panel.tsx`
 
@@ -80,9 +80,10 @@
 ### Implementation for User Story 4
 
 - [ ] T018 [US4] Add immutability guard in `app/api/admin/[ideaId]/review-stage/route.ts`: return `409` when idea `status` is `accepted` or `rejected` (covers FR-004, FR-012)
+- [ ] T018b [US4] Enforce stage-gate in `app/api/admin/[ideaId]/status/route.ts`: when the requested status is `accepted` or `rejected`, verify `idea.reviewStage === "final_decision"` and return `409` with `{ error: "Idea must be at Final Decision stage before accepting or rejecting" }` if not (covers FR-007, C3)
 - [ ] T019 [US4] Add `Accept` and `Reject` action buttons in `app/components/admin-ideas-panel.tsx` that are visible only when `reviewStage === "final_decision"` and `status` is not yet final; wire to existing `PATCH /api/admin/[ideaId]/status` endpoint
-- [ ] T020 [US4] Update admin idea list in `app/components/admin-ideas-panel.tsx` to exclude ideas with `status ∈ {accepted, rejected}` from the active review queue display (or add a separate Resolved section)
-- [ ] T021 [US4] Confirm `app/api/admin/ideas/route.ts` response omits or separates accepted/rejected ideas so the active review queue reflects only pipeline-active ideas
+- [ ] T020 [US4] Update admin idea list in `app/components/admin-ideas-panel.tsx` to move ideas with `status ∈ {accepted, rejected}` into a collapsible **Resolved Ideas** section below the active review queue; do not hide them entirely
+- [ ] T021 [US4] Update `app/api/admin/ideas/route.ts` to return a structured response separating active pipeline ideas from resolved ones: `{ active: IdeaSummary[], resolved: IdeaSummary[] }`; active excludes `draft`, `accepted`, `rejected`; resolved contains `accepted` and `rejected` only
 
 **Checkpoint**: Final decisions are irreversible. Accepted/Rejected ideas vanish from the active queue. No stage transitions possible post-decision.
 
@@ -105,20 +106,22 @@
 
 ---
 
-## Phase 7: User Story 5 - Draft Ideas Excluded from Review Pipeline (Priority: P2)
+## Phase 7: User Story 5 — Draft Exclusion Regression Verification *(Phase 4 behavior, not new code)*
 
-**Goal**: Draft ideas never appear in any review stage view and cannot receive stage transitions or stage comments; submitting a draft correctly enters the pipeline at Initial Screening.
+> **Note**: US5 (draft pipeline exclusion) is enforced by Phase 4 foundations and the Phase 2 schema defaults. Phase 7 tasks are **regression verification only** — they confirm existing guards remain intact after Phase 5 changes. No new implementation is expected.
 
-**Independent Test**: Save a draft → confirm absent from admin review queue at all stages → submit the draft → confirm it appears in Initial Screening in the admin panel.
+**Goal**: Confirm draft ideas cannot enter the review pipeline through any Phase 5 code path.
 
-### Implementation for User Story 5
+**Independent Test**: Save a draft → confirm absent from admin review queue → submit the draft → confirm it appears in Initial Screening.
 
-- [ ] T026 [US5] Verify the migration correctly sets `reviewStage = null` for all draft ideas; add an explicit `WHERE status = 'draft'` backfill guard if needed in `prisma/migrations/[timestamp]_multi_stage_review/migration.sql`
-- [ ] T027 [US5] Confirm `app/api/admin/[ideaId]/review-stage/route.ts` returns `409` when target idea has `status = draft` (cross-check with T010)
-- [ ] T028 [US5] Confirm `app/api/admin/[ideaId]/stage-comments/route.ts` returns `409` when target idea has `status = draft` (cross-check with T014)
-- [ ] T029 [US5] Confirm `app/api/admin/ideas/route.ts` still excludes `draft` ideas from admin queue (Phase 4 filter preserved) and add a regression note in the implementation
+### Regression Verification for User Story 5
 
-**Checkpoint**: Drafts are fully excluded from the review pipeline at schema, API, and UI levels. Submit-to-pipeline transition works correctly.
+- [ ] T026 [US5] *(verify)* Confirm migration sets `reviewStage = null` for all `draft` ideas; add explicit `WHERE status = 'draft'` backfill guard if missing in `prisma/migrations/[timestamp]_multi_stage_review/migration.sql`
+- [ ] T027 [US5] *(verify)* Confirm `app/api/admin/[ideaId]/review-stage/route.ts` returns `409` for draft ideas — no code change needed if T010 already covers this guard
+- [ ] T028 [US5] *(verify)* Confirm `app/api/admin/[ideaId]/stage-comments/route.ts` returns `409` for draft ideas — no code change needed if T014 already covers this guard
+- [ ] T029 [US5] *(verify)* Confirm `app/api/admin/ideas/route.ts` `active` array excludes `draft` ideas (Phase 4 filter still applied after T021 restructure)
+
+**Checkpoint**: All Phase 4 draft-exclusion guards confirmed intact after Phase 5 changes. No regressions introduced.
 
 ---
 
@@ -141,9 +144,9 @@
 - **Foundational (Phase 2)**: Depends on Phase 1 completion — **blocks all user stories**
 - **US1 (Phase 3)**: Depends on Phase 2 completion; no dependency on US2/US4/US3/US5
 - **US2 (Phase 4)**: Depends on Phase 2 completion; no dependency on US1 (can run in parallel with US1 after Phase 2)
-- **US4 (Phase 5)**: Depends on Phase 3 (US1) completion — Final Decision is the last review stage and requires stage transition infrastructure
+- **US4 (Phase 5)**: Depends on Phase 3 (US1) **and Phase 4 (US2)** completion — Final Decision requires stage transition infrastructure (US1) and `admin-ideas-panel.tsx` must have stage comment integration (US2) before US4 UI tasks (T019, T020) can land cleanly
 - **US3 (Phase 6)**: Depends on Phase 3 (US1) and Phase 4 (US2) completion — submitter view reads stage + comments
-- **US5 (Phase 7)**: Depends on Phase 2 completion; best verified after Phase 3 and Phase 4 are in place
+- **US5 (Phase 7)**: Regression verification only — depends on Phase 2 completion; run after Phase 5 (US4) to confirm no Phase 5 code paths introduced regressions in draft exclusion
 - **Polish (Phase 8)**: Depends on all user story phases being complete
 
 ### User Story Dependencies
@@ -155,11 +158,11 @@ Phase 2 (Foundational)
     ↓              ↓
 Phase 3 (US1)   Phase 4 (US2)
     ↓              ↓
-Phase 5 (US4) ←────┘
+Phase 5 (US4) ←──────●
     ↓
 Phase 6 (US3)
     ↓
-Phase 7 (US5)
+Phase 7 (US5) [regression verification — no new code]
     ↓
 Phase 8 (Polish)
 ```
