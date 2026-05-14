@@ -27,6 +27,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error }, { status: 400 });
   }
 
+  const isFinalDecisionStatus = status === "accepted" || status === "rejected";
+  if (isFinalDecisionStatus) {
+    if (existingIdea.status !== "submitted") {
+      return NextResponse.json({ error: "Final decision can only be made from submitted status." }, { status: 409 });
+    }
+
+    if (existingIdea.reviewStage !== "final_decision") {
+      return NextResponse.json({ error: "Final decision is allowed only at final_decision stage." }, { status: 409 });
+    }
+  }
+
   const updatedIdea = await prisma.idea.update({
     where: { id: ideaId },
     data: {

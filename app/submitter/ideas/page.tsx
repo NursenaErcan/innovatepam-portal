@@ -62,16 +62,6 @@ export default async function SubmitterIdeasPage() {
     },
   });
 
-  console.log(
-    "SUBMITTER STAGE COMMENTS DEBUG:",
-    ideas.map((idea) => ({
-      id: idea.id,
-      title: idea.title,
-      stageCommentsCount: idea.stageComments?.length ?? 0,
-      stageComments: idea.stageComments,
-    })),
-  );
-
   const serializedIdeas = ideas.map((idea) => ({
     ...idea,
     attachments: normalizeAttachmentsForApi(idea.attachments),

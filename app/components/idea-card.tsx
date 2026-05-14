@@ -1,7 +1,7 @@
 ﻿import StatusBadge from "@/app/components/status-badge";
 import CustomFieldsView from "@/app/components/custom-fields-view";
 import { StageCommentList } from "@/app/components/stage-comment-list";
-import type { ReviewStage } from "@/lib/review-stages";
+import { STAGE_LABELS, type ReviewStage } from "@/lib/review-stages";
 
 type IdeaCardProps = {
   idea: {
@@ -10,6 +10,7 @@ type IdeaCardProps = {
     description: string;
     category: string;
     status: string;
+    reviewStage?: ReviewStage | null;
     customFields?: unknown;
     createdAt: string | Date;
     attachments?: Array<{
@@ -58,6 +59,8 @@ export default function IdeaCard({
 }: IdeaCardProps) {
   const isDraft = idea.status === "draft";
   const stageComments = idea.stageComments ?? [];
+  const stageBadgeLabel = idea.status === "submitted" && idea.reviewStage ? STAGE_LABELS[idea.reviewStage] : undefined;
+  const badgeStatus = idea.status === "submitted" && idea.reviewStage ? idea.reviewStage : idea.status;
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -66,20 +69,16 @@ export default function IdeaCard({
           <h3 className="text-lg font-semibold text-slate-900">{idea.title}</h3>
           <p className="mt-1 text-sm text-slate-600">Category: {idea.category.replaceAll("_", " ")}</p>
           <p className="text-sm text-slate-600">Created: {new Date(idea.createdAt).toLocaleString()}</p>
-          {showSubmitter && idea.submitter ? (
-            <p className="text-sm text-slate-700">Submitter: {idea.submitter.email}</p>
-          ) : null}
+          {showSubmitter && idea.submitter ? <p className="text-sm text-slate-700">Submitter: {idea.submitter.email}</p> : null}
         </div>
-        <StatusBadge status={idea.status} />
+        <StatusBadge status={badgeStatus} label={stageBadgeLabel} />
       </div>
 
       <p className="mt-4 whitespace-pre-wrap text-sm text-slate-700">{idea.description}</p>
 
       {showCustomFields ? <CustomFieldsView category={idea.category} customFields={idea.customFields} /> : null}
 
-      {!showSubmitter ? <div>Debug comments count: {stageComments?.length ?? 0}</div> : null}
-
-      {!showSubmitter && stageComments && stageComments.length > 0 && (
+      {!showSubmitter && stageComments.length > 0 && (
         <StageCommentList
           comments={stageComments.map((comment) => ({
             ...comment,
@@ -105,12 +104,7 @@ export default function IdeaCard({
                   </a>
                 ) : null}
                 {attachment.previewUrl ? (
-                  <a
-                    href={attachment.previewUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-700 underline"
-                  >
+                  <a href={attachment.previewUrl} target="_blank" rel="noreferrer" className="text-blue-700 underline">
                     {attachment.fileName}
                   </a>
                 ) : (
