@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { IdeaCategory, Prisma } from "@prisma/client";
+import { normalizeAttachmentsForApi } from "@/lib/attachments";
 import { requireRoleFromRequest } from "@/lib/auth";
 import { resolveUploadDirectory } from "@/lib/db";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +18,11 @@ export async function GET(request: NextRequest) {
   const ideas = await prisma.idea.findMany({
     where: { submitterId: auth.user.id },
     include: {
-      attachment: true,
+      attachments: {
+        orderBy: {
+          displayOrder: "asc",
+        },
+      },
       evaluationComments: {
         orderBy: { createdAt: "desc" },
       },
@@ -35,7 +40,7 @@ export async function GET(request: NextRequest) {
         status: idea.status,
         customFields: idea.customFields,
         createdAt: idea.createdAt,
-        attachment: idea.attachment,
+        attachments: normalizeAttachmentsForApi(idea.attachments),
         evaluationComments: idea.evaluationComments,
       })),
     },
@@ -59,18 +64,19 @@ export async function POST(request: NextRequest) {
     .getAll("attachment")
     .filter((value): value is File => value instanceof File && value.size > 0);
 
-  const firstFile = files[0];
   const validationError = validateIdeaInput({
     title,
     description,
     category,
     attachmentCount: files.length,
-    attachmentMimeType: firstFile?.type ?? "",
-    attachmentSize: firstFile?.size ?? 0,
+    attachments: files.map((file) => ({
+      mimeType: file.type,
+      size: file.size,
+    })),
   });
 
   if (validationError) {
-    return NextResponse.json({ error: validationError }, { status: 400 });
+    return NextResponse.json(validationError, { status: 400 });
   }
 
   let customFields: Record<string, unknown> | null = null;
@@ -109,44 +115,81 @@ export async function POST(request: NextRequest) {
   const uploadDir = resolveUploadDirectory();
   await mkdir(uploadDir, { recursive: true });
 
-  const extension = path.extname(firstFile.name) || "";
-  const uniqueName = `${crypto.randomUUID()}${extension}`;
-  const absolutePath = path.join(uploadDir, uniqueName);
-  const storagePath = `/uploads/${uniqueName}`;
+  const persistedFiles: Array<{
+    absolutePath: string;
+    fileName: string;
+    storagePath: string;
+    mimeType: string;
+    size: number;
+    displayOrder: number;
+  }> = [];
 
-  const fileBuffer = Buffer.from(await firstFile.arrayBuffer());
-  await writeFile(absolutePath, fileBuffer);
+  try {
+    for (const [displayOrder, file] of files.entries()) {
+      const extension = path.extname(file.name) || "";
+      const uniqueName = `${crypto.randomUUID()}${extension}`;
+      const absolutePath = path.join(uploadDir, uniqueName);
+      const storagePath = `/uploads/${uniqueName}`;
 
-  const idea = await prisma.idea.create({
-    data: {
-      title,
-      description,
-      category: category as IdeaCategory,
-      customFields: customFields ? (customFields as Prisma.InputJsonValue) : undefined,
-      submitterId: auth.user.id,
-      attachment: {
-        create: {
-          fileName: firstFile.name,
-          storagePath,
-          mimeType: firstFile.type,
-          size: firstFile.size,
+      const fileBuffer = Buffer.from(await file.arrayBuffer());
+      await writeFile(absolutePath, fileBuffer);
+
+      persistedFiles.push({
+        absolutePath,
+        fileName: file.name,
+        storagePath,
+        mimeType: file.type,
+        size: file.size,
+        displayOrder,
+      });
+    }
+
+    const idea = await prisma.idea.create({
+      data: {
+        title,
+        description,
+        category: category as IdeaCategory,
+        customFields: customFields ? (customFields as Prisma.InputJsonValue) : undefined,
+        submitterId: auth.user.id,
+        attachments: {
+          create: persistedFiles.map((file) => ({
+            fileName: file.fileName,
+            storagePath: file.storagePath,
+            mimeType: file.mimeType,
+            size: file.size,
+            displayOrder: file.displayOrder,
+          })),
         },
       },
-    },
-    include: {
-      attachment: true,
-    },
-  });
+    });
 
-  return NextResponse.json(
-    {
-      success: true,
-      idea: {
-        id: idea.id,
-        title: idea.title,
-        status: idea.status,
+    return NextResponse.json(
+      {
+        success: true,
+        idea: {
+          id: idea.id,
+          title: idea.title,
+          status: idea.status,
+        },
       },
-    },
-    { status: 201 },
-  );
+      { status: 201 },
+    );
+  } catch {
+    await Promise.all(
+      persistedFiles.map(async (file) => {
+        try {
+          await unlink(file.absolutePath);
+        } catch {
+          // Best-effort cleanup for partial writes.
+        }
+      }),
+    );
+
+    return NextResponse.json(
+      {
+        error: "Failed to save idea attachments.",
+      },
+      { status: 500 },
+    );
+  }
 }

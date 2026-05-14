@@ -1,4 +1,5 @@
 import AdminIdeasPanel from "@/app/components/admin-ideas-panel";
+import { normalizeAttachmentsForApi } from "@/lib/attachments";
 import { requireRoleForPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -12,7 +13,11 @@ export default async function AdminIdeasPage() {
           email: true,
         },
       },
-      attachment: true,
+      attachments: {
+        orderBy: {
+          displayOrder: "asc",
+        },
+      },
       evaluationComments: {
         include: {
           admin: {
@@ -31,6 +36,11 @@ export default async function AdminIdeasPage() {
     },
   });
 
+  const serializedIdeas = ideas.map((idea) => ({
+    ...idea,
+    attachments: normalizeAttachmentsForApi(idea.attachments),
+  }));
+
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 p-6">
       <div className="mb-6">
@@ -40,7 +50,7 @@ export default async function AdminIdeasPage() {
         </p>
       </div>
 
-      <AdminIdeasPanel initialIdeas={ideas} />
+      <AdminIdeasPanel initialIdeas={serializedIdeas} />
     </main>
   );
 }

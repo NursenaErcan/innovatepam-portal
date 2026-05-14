@@ -48,21 +48,24 @@ model Idea {
   status             IdeaStatus          @default(submitted)
   submitter          User                @relation(fields: [submitterId], references: [id])
   submitterId        String
-  attachment         Attachment?
+  attachments        Attachment[]
   evaluationComments EvaluationComment[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 }
 
 model Attachment {
-  id          String   @id @default(uuid())
-  idea        Idea     @relation(fields: [ideaId], references: [id])
-  ideaId      String   @unique
-  fileName    String
-  storagePath String
-  mimeType    String
-  size        Int
-  createdAt   DateTime @default(now())
+  id           String   @id @default(uuid())
+  idea         Idea     @relation(fields: [ideaId], references: [id])
+  ideaId       String
+  fileName     String
+  storagePath  String
+  mimeType     String
+  size         Int
+  displayOrder Int
+  createdAt    DateTime @default(now())
+
+  @@unique([ideaId, displayOrder])
 }
 
 model EvaluationComment {

@@ -14,12 +14,15 @@ type AdminIdea = {
   submitter: {
     email: string;
   };
-  attachment?: {
+  attachments?: Array<{
+    id: string;
     fileName: string;
-    storagePath: string;
+    downloadUrl: string;
+    previewUrl?: string | null;
     size: number;
     mimeType: string;
-  } | null;
+    displayOrder?: number;
+  }>;
   evaluationComments: Array<{
     id: string;
     text: string;
