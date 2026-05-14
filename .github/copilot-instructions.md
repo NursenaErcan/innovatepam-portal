@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/004-draft-management/plan.md`
+`specs/005-multi-stage-review/plan.md`
 <!-- SPECKIT END -->
