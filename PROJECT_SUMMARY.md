@@ -1,9 +1,9 @@
-# PROJECT_SUMMARY
+﻿# PROJECT_SUMMARY
 
 ## 1. Project Overview
-InnovatEPAM Portal is an internal innovation management application for collecting employee ideas and supporting a structured admin review workflow. The project has now progressed through three implemented phases, moving from a core role-based portal, to category-aware smart submission forms, and then to secure multi-media support with protected attachment handling.
+InnovatEPAM Portal is an internal innovation management application for collecting employee ideas and supporting a structured admin review workflow. The project has now progressed through five implemented phases, moving from a core role-based portal, to category-aware smart submission forms, to secure multi-media support with protected attachment handling, to draft management, and now to a complete multi-stage review pipeline.
 
-The current application state is no longer a Phase 1 MVP plus extensions. It is a multi-phase local product that includes authentication, role-based workflows, dynamic submission structures, multi-file upload support, secure attachment access, and full implementation documentation.
+The current application state includes authentication, role-based workflows, dynamic submission structures, multi-file upload support, secure attachment access, draft lifecycle management, multi-stage review with stage-scoped feedback, and full implementation documentation.
 
 ## 2. Completed Phases
 
@@ -34,7 +34,33 @@ The current application state is no longer a Phase 1 MVP plus extensions. It is 
 - Configurable upload limits.
 - Regression validation across prior phases.
 
-## 3. Phase 3 Features
+### Phase 4 Draft Management
+- Submitters can save ideas as drafts without final submission.
+- Draft ideas remain fully editable and deletable.
+- Drafts are visible only to the owner submitter.
+- Drafts are completely hidden from admin review queues.
+- Final submission converts draft status to submitted.
+- Submitted ideas become read-only for submitters.
+- Form reset after successful submission (new or draft save).
+- Status-based access control: `draft` vs `submitted` with different UI actions.
+
+### Phase 5 Multi-Stage Review (Completed)
+- Multi-stage review pipeline implemented across four stages:
+	- Initial Screening
+	- Technical Review
+	- Business Impact Review
+	- Final Decision
+- Sequential stage transitions with explicit Previous/Next stage controls.
+- StageComment system for stage-scoped admin feedback.
+- Submitter visibility of admin feedback in submitter dashboard surfaces.
+- Structured admin queues with active and resolved ideas sections.
+- Final decision gating for accepted/rejected outcomes at Final Decision stage.
+- reviewStage lifecycle initialization and status-aware progression.
+- Accessibility validation improvements for review pipeline and stage feedback interactions.
+
+## 3. Implementation Details
+
+### Phase 3 Multi-Media Support Architecture
 Phase 3 introduced a complete attachment-system upgrade rather than a superficial UI enhancement.
 
 - Multiple attachments can now be associated with a single idea.
@@ -47,6 +73,27 @@ Phase 3 introduced a complete attachment-system upgrade rather than a superficia
 - Attachments preserve user-selected ordering through stored `displayOrder` values.
 - Upload validation supports configurable count and size constraints.
 - Phase 1 and Phase 2 regression checks remain part of the delivery workflow.
+
+### Phase 4 Draft Management Architecture
+Phase 4 introduced submission lifecycle separation enabling submitters to save work-in-progress ideas.
+
+- **Draft Lifecycle**: Ideas are created with `status = "draft"` when "Save as Draft" is clicked, and remain editable until final submission.
+- **Status-Based Access**: Draft ideas have `status = "draft"` in the schema enum, allowing fine-grained access control and filtering.
+- **API Separation**: PATCH `/api/ideas/[ideaId]` updates existing drafts, POST `/api/ideas/[ideaId]/submit` finalizes drafts, DELETE removes them.
+- **Admin Exclusion**: GET `/api/admin/ideas` includes `where: { status: { not: "draft" } }`, ensuring drafts never appear in review queues.
+- **Form State Management**: Form resets after new idea creation or draft save, and maintains edit state when modifying drafts.
+- **Submitter Dashboard**: Draft cards show "Edit Draft", "Delete Draft", and "Submit Draft" action buttons only for draft status.
+- **Read-Only Enforcement**: Submitted ideas (status `submitted`) show no edit/delete buttons and are read-only for submitters.
+
+### Phase 5 Multi-Stage Review Architecture
+Phase 5 introduced a lifecycle-aware review pipeline with relational stage feedback and role-specific visibility boundaries.
+
+- **Idea.reviewStage Enum Lifecycle**: `Idea.reviewStage` tracks stage progression through Initial Screening, Technical Review, Business Impact Review, and Final Decision.
+- **Sequential Stage Controls**: Admin pipeline enforces step-wise transitions (Previous/Next) and blocks invalid boundary jumps.
+- **StageComment Relational Model**: `StageComment` records are linked to `Idea` and stage context, preserving chronological stage feedback history.
+- **Visibility Boundaries**: Admin surfaces can access full moderation context; submitter surfaces expose feedback content while withholding admin identity details.
+- **Structured Queues**: Admin review queue is split into active vs resolved sections for clearer decision lifecycle tracking.
+- **Decision Gate Enforcement**: Accepted/Rejected transitions are gated behind Final Decision stage.
 
 ## 4. Architecture Improvements
 
@@ -64,6 +111,7 @@ The Prisma schema has evolved incrementally across all phases:
 - Phase 1 established core entities such as `User`, `Idea`, `Attachment`, `EvaluationComment`, and `Session`.
 - Phase 2 extended `Idea` with JSON `customFields`.
 - Phase 3 reshaped attachment storage from a single attachment reference into a relational ordered attachment collection.
+- Phase 5 extended `Idea` with `reviewStage` lifecycle state and introduced `StageComment` as a relational stage-feedback model.
 
 This evolution preserved continuity while allowing each phase to deepen capability without replacing the entire data model.
 
@@ -81,6 +129,38 @@ Moving from public file links to secure attachment delivery introduced an author
 ### Migration Synchronization Issues
 Schema evolution across phases created synchronization concerns between Prisma schema, generated client types, migration SQL, and route/component usage. Mixed old/new code paths could trigger runtime validation errors until all include statements, payload mappings, and relation names were aligned.
 
+### Phase 4: Draft Status Handling and Form State Management
+Phase 4 introduced submission mode separation challenges:
+
+**Challenge 1: submissionMode Parameter Not Being Read**
+- **Issue**: Form was sending `submissionMode = "draft"` in FormData, but POST handler wasn't extracting it, causing all ideas to default to `submitted` status.
+- **Root Cause**: Missing extraction line in POST `/api/ideas` handler.
+- **Solution**: Added `const submissionMode = String(formData.get("submissionMode") ?? "final").trim();` to read the parameter, then set `status: submissionMode === "draft" ? "draft" : "submitted"` on creation.
+- **Validation**: Added console logging to trace submissionMode through the API to confirm correct status assignment.
+
+**Challenge 2: Admin Visibility of Drafts**
+- **Issue**: Draft ideas were appearing in admin review queues despite being intended as private work-in-progress.
+- **Root Cause**: GET `/api/admin/ideas` had no filter to exclude drafts.
+- **Solution**: Added `where: { status: { not: "draft" } }` to the Prisma query, ensuring only submitted/under_review/accepted/rejected ideas appear to admins.
+- **Validation**: Query tested to confirm drafts are completely excluded from admin endpoints.
+
+**Challenge 3: Form Reset and Edit State Coordination**
+- **Issue**: Form didn't properly reset after saving new drafts, leaving fields populated for new idea entry.
+- **Solution**: Enhanced reset logic to handle three scenarios: final submission (reset + clear), new draft save (reset for new entry), and draft edit (keep edit mode with save confirmation message).
+
+**Challenge 4: Button Handler Type Confusion**
+- **Issue**: "Save as Draft" button needed to explicitly call draft handler, not default form submission.
+- **Solution**: Button uses `type="button"` with `onClick={() => void handleAction("draft")}` to bypass form onSubmit handler.
+- **Validation**: Form submission mode correctly routed to appropriate API endpoints.
+
+### Phase 5: Multi-Stage Review Engineering and Debugging Challenges
+- **reviewStage null initialization**: Ensuring draft ideas remained `reviewStage = null` while submitted ideas initialized predictably.
+- **Old admin UI replacement**: Migrating from single-status review controls to stage pipeline controls without regressing prior behaviors.
+- **StageComment visibility bug**: Submitter-facing stage feedback initially failed to render despite persisted data.
+- **Submitter dashboard data-path debugging**: Required end-to-end tracing of Prisma query selection, page serialization, and component prop flow.
+- **Hydration warning investigation**: Locale-sensitive date formatting caused server/client mismatch warnings in development.
+- **Next.js cache/dev-server conflicts**: Stale dev cache/process reuse intermittently served outdated component code and delayed verification.
+
 ## 6. AI Collaboration
 SpecKit and GitHub Copilot were used iteratively across multiple phases rather than as one-time scaffolding tools.
 
@@ -89,21 +169,42 @@ SpecKit and GitHub Copilot were used iteratively across multiple phases rather t
 - The combination supported an iterative delivery loop where each phase could be clarified, planned, implemented, and re-validated with explicit traceability.
 - Across multiple phases, this workflow helped reduce requirement drift, expose inconsistencies early, and keep architecture evolution understandable.
 
-## 7. Final Current Status
+## 9. Final Current Status
 InnovatEPAM Portal now includes:
 
-- Authentication.
-- Role-based access control.
-- Dynamic submission forms.
-- Multi-file uploads.
-- Secure attachment handling.
-- Admin review workflow.
-- Full documentation.
-- GitHub workflow with feature branches and pull requests.
+- Authentication with session-based login.
+- Role-based access control (submitter, admin).
+- Dynamic submission forms with category-specific fields.
+- Multi-file uploads with secure attachment handling.
+- Admin review workflow with status transitions and evaluation comments.
+- **Draft management**: Save, edit, delete, and submit ideas as drafts with private visibility.
+- **Phase 5 multi-stage review**: Initial Screening → Technical Review → Business Impact Review → Final Decision with sequential transitions.
+- **Stage feedback lifecycle**: StageComment system, submitter visibility of admin feedback, and structured active/resolved review queues.
+- **Final decision governance**: Accepted/Rejected decisions gated at Final Decision stage.
+- Form state management with proper reset behavior after successful submissions.
 
-In practical terms, the application now supports a complete submitter-to-admin lifecycle with multi-phase enhancements already integrated into the current codebase.
+### Completed Deliverables
+✅ Phase 1: Core Portal (authentication, roles, submissions, admin review)  
+✅ Phase 2: Smart Submission Forms (category-aware dynamic fields)  
+✅ Phase 3: Multi-Media Support (attachments, previews, secure downloads)  
+✅ Phase 4: Draft Management (save/edit/delete/submit drafts with privacy)  
+✅ Phase 5: Multi-Stage Review (pipeline, stage transitions, stage comments, submitter feedback visibility)
 
-## 8. Technical Stack
+## 10. Future Roadmap
+
+### Phase 6: Blind Review
+- Anonymized submitter information during technical evaluation
+- Configurable anonymization rules per review stage
+- Submission metadata visibility (category, attachments) without submitter identity
+- De-anonymization after final approval
+
+### Phase 7: Scoring System
+- Scoring rubrics with weighted criteria per review stage
+- Numerical scoring input with validation and constraints
+- Aggregate scoring across multiple reviewers
+- Scoring summary dashboard for submitters and admins
+
+## 7. Technical Stack
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
@@ -113,7 +214,7 @@ In practical terms, the application now supports a complete submitter-to-admin l
 - SpecKit
 - GitHub Copilot
 
-## 9. Spec-Driven Delivery Workflow
+## 8. Spec-Driven Delivery Workflow
 The project followed a structured specification-driven delivery flow across phases:
 
 - Constitution established engineering principles and delivery constraints.
@@ -126,15 +227,6 @@ The project followed a structured specification-driven delivery flow across phas
 
 This process made multi-phase evolution manageable and auditable.
 
-## 10. Updated Future Roadmap
-Remaining phases are:
-
-- Phase 4 Draft Management
-- Phase 5 Multi-Stage Review
-- Phase 6 Blind Review
-- Phase 7 Scoring System
-
-These phases build on the current foundation of authenticated workflows, dynamic submission models, secure file handling, and admin review capabilities.
-
 ## 11. Final Outcome
 The current state of InnovatEPAM Portal is a fully documented multi-phase application that has progressed beyond a simple MVP. It now combines role-aware workflows, extensible idea data structures, secure relational attachments, and specification-driven engineering practices into a coherent local product suitable for continued phased expansion.
+

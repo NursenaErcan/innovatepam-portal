@@ -38,6 +38,7 @@ model User {
   ideas              Idea[]
   evaluationComments EvaluationComment[]
   sessions           Session[]
+  stageComments      StageComment[]
 }
 
 model Idea {
@@ -53,6 +54,24 @@ model Idea {
   evaluationComments EvaluationComment[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+  reviewStage        ReviewStage?
+  stageComments      StageComment[]
+}
+enum ReviewStage {
+  initial_screening
+  technical_review
+  business_impact_review
+  final_decision
+}
+model StageComment {
+  id        String      @id @default(uuid())
+  idea      Idea        @relation(fields: [ideaId], references: [id])
+  ideaId    String
+  admin     User        @relation(fields: [adminId], references: [id])
+  adminId   String
+  stage     ReviewStage
+  text      String
+  createdAt DateTime    @default(now())
 }
 
 model Attachment {

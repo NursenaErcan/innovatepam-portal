@@ -68,7 +68,10 @@ export async function POST(
 
   const idea = await prisma.idea.update({
     where: { id: ownerCheck.idea.id },
-    data: { status: IdeaStatus.submitted },
+    data: {
+      status: IdeaStatus.submitted,
+      reviewStage: "initial_screening",
+    },
   });
 
   return NextResponse.json(
