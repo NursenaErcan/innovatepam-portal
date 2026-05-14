@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import IdeaCard from "@/app/components/idea-card";
+import { IdeaScoreSection } from "@/app/components/idea-score-section";
 import { ReviewPipeline } from "@/app/components/review-pipeline";
 import { StageCommentForm } from "@/app/components/stage-comment-form";
 import { StageCommentList } from "@/app/components/stage-comment-list";
@@ -219,6 +220,15 @@ export default function AdminIdeasPanel({ initialIdeas }: AdminIdeasPanelProps) 
               idea.status === "draft" ||
               REVIEW_STAGES.indexOf(idea.reviewStage) <= 0
             }
+          />
+
+          <IdeaScoreSection
+            ideaId={idea.id}
+            isDraft={idea.status === "draft"}
+            onScoreSaved={() => {
+              void refreshIdeas();
+            }}
+            isSaving={false}
           />
 
           {canTakeFinalDecision ? (

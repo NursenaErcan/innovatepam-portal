@@ -1,6 +1,8 @@
 ﻿import StatusBadge from "@/app/components/status-badge";
 import CustomFieldsView from "@/app/components/custom-fields-view";
+import { ScoreSummary } from "@/app/components/score-summary";
 import { StageCommentList } from "@/app/components/stage-comment-list";
+import type { AggregateScore } from "@/lib/scoring-types";
 import { STAGE_LABELS, type ReviewStage } from "@/lib/review-stages";
 
 type IdeaCardProps = {
@@ -11,6 +13,7 @@ type IdeaCardProps = {
     category: string;
     status: string;
     reviewStage?: ReviewStage | null;
+    scoreSummary?: AggregateScore | null;
     customFields?: unknown;
     createdAt: string | Date;
     attachments?: Array<{
@@ -161,6 +164,12 @@ export default function IdeaCard({
               Delete draft
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {idea.scoreSummary ? (
+        <div className="mt-4">
+          <ScoreSummary scores={idea.scoreSummary} />
         </div>
       ) : null}
 

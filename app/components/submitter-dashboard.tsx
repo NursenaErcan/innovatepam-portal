@@ -3,6 +3,7 @@
 import { useState } from "react";
 import IdeaCard from "@/app/components/idea-card";
 import IdeaForm from "@/app/components/idea-form";
+import type { AggregateScore } from "@/lib/scoring-types";
 import type { ReviewStage } from "@/lib/review-stages";
 
 type SubmitterIdea = {
@@ -12,6 +13,7 @@ type SubmitterIdea = {
   category: string;
   status: string;
   reviewStage?: ReviewStage | null;
+  scoreSummary?: AggregateScore | null;
   createdAt: string | Date;
   attachments?: Array<{
     id: string;
@@ -138,3 +140,4 @@ export default function SubmitterDashboard({ initialIdeas }: SubmitterDashboardP
     </div>
   );
 }
+

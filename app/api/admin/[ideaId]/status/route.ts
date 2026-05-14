@@ -27,6 +27,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error }, { status: 400 });
   }
 
+  // Scores persist independently; not modified by Final Decision
+  // See Phase 7 Scoring System: scores remain in IdeaScore table regardless of status change
   const isFinalDecisionStatus = status === "accepted" || status === "rejected";
   if (isFinalDecisionStatus) {
     if (existingIdea.status !== "submitted") {

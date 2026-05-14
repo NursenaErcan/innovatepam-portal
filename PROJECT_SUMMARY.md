@@ -1,9 +1,9 @@
 ﻿# PROJECT_SUMMARY
 
 ## 1. Project Overview
-InnovatEPAM Portal is an internal innovation management application for collecting employee ideas and supporting a structured admin review workflow. The project has now progressed through six implemented phases, moving from a core role-based portal, to category-aware smart submission forms, to secure multi-media support with protected attachment handling, to draft management, to a complete multi-stage review pipeline, and now to a blind review system with identity masking during technical evaluation.
+InnovatEPAM Portal is an internal innovation management application for collecting employee ideas and supporting a structured admin review workflow. The project has now progressed through seven implemented phases, moving from a core role-based portal, to category-aware smart submission forms, to secure multi-media support with protected attachment handling, to draft management, to a complete multi-stage review pipeline, to a blind review system with identity masking during technical evaluation, and now to a multi-dimensional scoring system with admin evaluation and submitter feedback.
 
-The current application state includes authentication, role-based workflows, dynamic submission structures, multi-file upload support, secure attachment access, draft lifecycle management, multi-stage review with stage-scoped feedback, blind review identity masking, admin accept/reject decisioning at final stage, and full implementation documentation.
+The current application state includes authentication, role-based workflows, dynamic submission structures, multi-file upload support, secure attachment access, draft lifecycle management, multi-stage review with stage-scoped feedback, blind review identity masking, admin accept/reject decisioning at final stage, multi-dimensional scoring (Innovation, Feasibility, Business Impact), score aggregation with average calculations, conditional submitter score visibility after Final Decision, and full implementation documentation.
 
 ## 2. Completed Phases
 
@@ -70,6 +70,17 @@ The current application state includes authentication, role-based workflows, dyn
 - All Phase 1-5 functionality preserved and validated.
 - API mapping enforces blind review rules in both server-side page rendering and client-side refresh endpoints.
 
+### Phase 7 Scoring System (Completed)
+- Multi-dimensional scoring system with three evaluation criteria: Innovation, Feasibility, Business Impact.
+- Relational `IdeaScore` model storing dimension, value (1-5 scale), reviewer, and timestamp.
+- Admin scoring during any review stage before Final Decision.
+- Score input component with 1-5 numerical validation and atomic upsert behavior.
+- Admin score editing and updates per reviewer (composite key: ideaId + dimension + reviewerId).
+- Average score aggregation per dimension across all reviewers.
+- Submitter score visibility after Final Decision for accepted/rejected ideas.
+- Score persistence maintained for audit purposes even after idea resolution.
+- Scoring compatibility with blind review and resolved ideas.
+
 ## 3. Implementation Details
 
 ### Phase 3 Multi-Media Support Architecture
@@ -126,6 +137,23 @@ The Prisma schema has evolved incrementally across all phases:
 - Phase 5 extended `Idea` with `reviewStage` lifecycle state and introduced `StageComment` as a relational stage-feedback model.
 
 This evolution preserved continuity while allowing each phase to deepen capability without replacing the entire data model.
+
+### Phase 7 Scoring System Architecture
+Phase 7 introduced a multi-dimensional scoring system enabling quantitative evaluation of submitted ideas.
+
+- **IdeaScore Relational Model**: Scores persisted with (ideaId, dimension, reviewerId) composite key enabling multiple reviewers per idea.
+
+- **Score Aggregation Flow**: 
+  - Admin submits 1-5 score → POST `/api/admin/[ideaId]/score` upsets record
+  - GET `/api/admin/[ideaId]/score` retrieves all scores
+  - `aggregateScores()` computes averages per dimension
+  - Submitter visibility: GET `/api/ideas/[ideaId]/score-summary` (gated by status/stage)
+
+- **Admin-Only Score Editing**: Score updates gated behind admin authentication.
+
+- **Conditional Submitter Score Visibility**: Visible when `reviewStage === "final_decision" OR status in ("accepted", "rejected")`. ScoreSummary component displays Innovation/Feasibility/Business Impact with rounded averages.
+
+- **Scoring Validation**: Values must be 1-5 integers. Drafts cannot be scored (409 Conflict).
 
 ## 5. Engineering Challenges
 
@@ -198,6 +226,30 @@ Phase 4 introduced submission mode separation challenges:
   - **Solution**: Added `reviewStage` to submitter ideas API response payload, and updated [app/components/idea-card.tsx](app/components/idea-card.tsx) and [app/components/status-badge.tsx](app/components/status-badge.tsx) to render stage-specific badge labels when idea is submitted with a valid reviewStage.
   - **Validation**: Submitter dashboard now displays correct stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) for submitted ideas.
 
+  ### Phase 7: Scoring System Engineering Challenges
+
+  - **Scoring UI integration into admin dashboard**
+    - **Issue**: Admin panel needed to display score input fields for all three dimensions without cluttering the interface.
+    - **Solution**: Created dedicated `IdeaScoreSection` component encapsulating score inputs. Positioned after stage transition controls in admin panel for logical workflow placement.
+
+  - **Submitter score visibility regression**
+    - **Issue**: After removing temporary debug output, submitter score summary disappeared completely despite scoreSummary data flowing through components.
+    - **Root Cause**: [app/components/idea-card.tsx](app/components/idea-card.tsx) lacked `scoreSummary` field in type definition and rendering logic.
+    - **Solution**: Added `scoreSummary?: AggregateScore | null` to IdeaCardProps type, imported ScoreSummary component, and added conditional render block before EvaluationComments section.
+    - **Validation**: Scores now display correctly for accepted/rejected ideas in submitter dashboard.
+
+  - **reviewStage lifecycle synchronization**
+    - **Issue**: Score visibility depended on both status and reviewStage fields being synchronized correctly.
+    - **Solution**: Implemented `canViewScoreSummaryForSubmitter()` utility checking both conditions: reviewStage === "final_decision" OR (status === "accepted" OR status === "rejected").
+
+  - **Final Decision gating for score visibility**
+    - **Issue**: Submitters could not view scores while idea was still in Technical Review or Business Impact Review stages.
+    - **Solution**: Gated score visibility behind Final Decision stage transition to maintain blind review integrity.
+
+  - **Score aggregation rendering issues**
+    - **Issue**: Average score computation failed when dimension had no scores (empty array → NaN).
+    - **Solution**: Modified aggregation to return null for empty dimensions instead of NaN. ScoreSummary formats null as "—" (em-dash).
+
 ## 6. AI Collaboration
 SpecKit and GitHub Copilot were used iteratively across multiple phases rather than as one-time scaffolding tools.
 
@@ -222,22 +274,23 @@ InnovatEPAM Portal now includes:
 - **Admin accept/reject actions**: Accept and Reject buttons visible only to admin at Final Decision stage for submitted ideas.
 - **Submitter stage visibility**: Dashboard displays stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) instead of only "Submitted" status.
 - Form state management with proper reset behavior after successful submissions.
+- **Phase 7 multi-dimensional scoring**: Innovation, Feasibility, and Business Impact dimensions with 1-5 scale.
+- **Admin score editing**: Admins can create and update scores during review prior to final resolution.
+- **Score aggregation**: Average calculations across multiple reviewers per dimension.
+- **Submitter score visibility**: Evaluation scores shown after Final Decision for accepted/rejected ideas.
+- **Score persistence**: Audit trail maintained even after idea is resolved.
+- **Blind review and resolved-idea compatibility**: Scoring works with identity masking and remains visible in resolved ideas.
 
 ### Completed Deliverables
-✅ Phase 1: Core Portal (authentication, roles, submissions, admin review)  
-✅ Phase 2: Smart Submission Forms (category-aware dynamic fields)  
-✅ Phase 3: Multi-Media Support (attachments, previews, secure downloads)  
-✅ Phase 4: Draft Management (save/edit/delete/submit drafts with privacy)  
-✅ Phase 5: Multi-Stage Review (pipeline, stage transitions, stage comments, submitter feedback visibility)  
-✅ Phase 6: Blind Review (identity masking during evaluation, accept/reject actions at final decision, stage labels in submitter dashboard)
+✅ Phase 1 Core Portal completed  
+✅ Phase 2 Smart Submission Forms completed  
+✅ Phase 3 Multi-Media Support completed  
+✅ Phase 4 Draft Management completed  
+✅ Phase 5 Multi-Stage Review completed  
+✅ Phase 6 Blind Review completed  
+✅ Phase 7 Scoring System completed
 
 ## 10. Future Roadmap
-
-### Phase 7: Scoring System
-- Scoring rubrics with weighted criteria per review stage
-- Numerical scoring input with validation and constraints
-- Aggregate scoring across multiple reviewers
-- Scoring summary dashboard for submitters and admins
 
 ## 7. Technical Stack
 - Next.js App Router
@@ -263,5 +316,9 @@ The project followed a structured specification-driven delivery flow across phas
 This process made multi-phase evolution manageable and auditable.
 
 ## 11. Final Outcome
-The current state of InnovatEPAM Portal is a fully documented multi-phase application that has progressed beyond a simple MVP. It now combines role-aware workflows, extensible idea data structures, secure relational attachments, and specification-driven engineering practices into a coherent local product suitable for continued phased expansion.
+The InnovatEPAM Portal delivery is complete as a full end-to-end innovation review workflow across all planned phases.
+
+- Full end-to-end innovation review workflow completed.
+- Admin and submitter workflows complete.
+- SpecKit and Copilot workflow used across all phases for specification, planning, implementation, validation, and documentation.
 
