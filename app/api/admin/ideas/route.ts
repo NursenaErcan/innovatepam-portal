@@ -40,6 +40,19 @@ export async function GET(request: NextRequest) {
           createdAt: "desc",
         },
       },
+      stageComments: {
+        include: {
+          admin: {
+            select: {
+              id: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",
@@ -54,11 +67,13 @@ export async function GET(request: NextRequest) {
         description: idea.description,
         category: idea.category,
         status: idea.status,
+        reviewStage: idea.reviewStage,
         customFields: idea.customFields,
         createdAt: idea.createdAt,
         submitter: idea.submitter,
         attachments: normalizeAttachmentsForApi(idea.attachments),
         evaluationComments: idea.evaluationComments,
+        stageComments: idea.stageComments,
       })),
     },
     { status: 200 },

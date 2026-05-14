@@ -3,6 +3,7 @@
 import { useState } from "react";
 import IdeaCard from "@/app/components/idea-card";
 import IdeaForm from "@/app/components/idea-form";
+import type { ReviewStage } from "@/lib/review-stages";
 
 type SubmitterIdea = {
   id: string;
@@ -10,6 +11,7 @@ type SubmitterIdea = {
   description: string;
   category: string;
   status: string;
+  reviewStage?: ReviewStage | null;
   createdAt: string | Date;
   attachments?: Array<{
     id: string;
@@ -27,6 +29,12 @@ type SubmitterIdea = {
     admin?: {
       email: string;
     };
+  }>;
+  stageComments?: Array<{
+    id: string;
+    text: string;
+    stage: ReviewStage;
+    createdAt: string | Date;
   }>;
 };
 
@@ -109,6 +117,9 @@ export default function SubmitterDashboard({ initialIdeas }: SubmitterDashboardP
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
 
       <section className="space-y-4">
+        <div className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800">
+          PHASE 5 DEBUG COMPONENT REACHED
+        </div>
         <h2 className="text-lg font-semibold text-slate-900">Your Ideas</h2>
         {ideas.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
@@ -130,4 +141,3 @@ export default function SubmitterDashboard({ initialIdeas }: SubmitterDashboardP
     </div>
   );
 }
-

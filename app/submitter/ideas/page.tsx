@@ -1,4 +1,4 @@
-import SubmitterDashboard from "@/app/components/submitter-dashboard";
+﻿import SubmitterDashboard from "@/app/components/submitter-dashboard";
 import { normalizeAttachmentsForApi } from "@/lib/attachments";
 import { requireRoleForPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -8,22 +8,52 @@ export default async function SubmitterIdeasPage() {
 
   const ideas = await prisma.idea.findMany({
     where: { submitterId: user.id },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      category: true,
+      status: true,
+      reviewStage: true,
+      customFields: true,
+      createdAt: true,
       attachments: {
         orderBy: {
           displayOrder: "asc",
         },
+        select: {
+          id: true,
+          fileName: true,
+          storagePath: true,
+          mimeType: true,
+          size: true,
+          displayOrder: true,
+        },
       },
       evaluationComments: {
-        include: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          id: true,
+          text: true,
+          createdAt: true,
           admin: {
             select: {
               email: true,
             },
           },
         },
+      },
+      stageComments: {
         orderBy: {
-          createdAt: "desc",
+          createdAt: "asc",
+        },
+        select: {
+          id: true,
+          text: true,
+          stage: true,
+          createdAt: true,
         },
       },
     },
@@ -31,6 +61,16 @@ export default async function SubmitterIdeasPage() {
       createdAt: "desc",
     },
   });
+
+  console.log(
+    "SUBMITTER STAGE COMMENTS DEBUG:",
+    ideas.map((idea) => ({
+      id: idea.id,
+      title: idea.title,
+      stageCommentsCount: idea.stageComments?.length ?? 0,
+      stageComments: idea.stageComments,
+    })),
+  );
 
   const serializedIdeas = ideas.map((idea) => ({
     ...idea,

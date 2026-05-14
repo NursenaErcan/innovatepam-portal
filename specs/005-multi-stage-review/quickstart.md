@@ -92,3 +92,27 @@ npm run dev
 | SC-004: 0% of draft ideas in admin review queue | Confirm US5 checklist; no draft surfaces in any admin stage view. |
 | SC-005: 0 stage changes succeed on final-state ideas | Attempt API call `PATCH /api/admin/{acceptedIdeaId}/review-stage` — must return 409. |
 | SC-006: Phase 1–4 regressions = 0 | Complete Phase 1–4 backward compatibility checklist above. |
+
+---
+
+## Accessibility Validation (Manual)
+
+### ReviewPipeline
+- [ ] Can be focused via keyboard tab order (Tab/Shift+Tab cycles through all interactive elements).
+- [ ] Advance/retreat controls are operable by keyboard (Enter/Space triggers action) and have visible focus indicators (outline or highlight).
+- [ ] Disabled controls remain focusable and provide an accessible tooltip explaining why they are disabled (tooltip is announced by screen readers and visible on focus/hover).
+- [ ] All stage labels are announced by screen readers (use aria-label or visually hidden text as needed).
+
+### StageCommentForm
+- [ ] All form fields and buttons are reachable and operable by keyboard (Tab/Shift+Tab, Enter/Space).
+- [ ] Focus order is logical and matches visual layout.
+- [ ] Submit can be triggered by keyboard only (Enter on textarea or button).
+- [ ] Error messages and validation feedback are announced by screen readers (aria-live region or similar).
+- [ ] Submit button is disabled when input is invalid, but remains focusable and provides an accessible reason (aria-disabled, tooltip, or aria-describedby).
+
+### StageCommentList
+- [ ] List items are accessible by keyboard navigation (Tab/Arrow keys as appropriate).
+- [ ] Each comment's stage label is announced by screen readers (aria-label or visually hidden text).
+- [ ] No information is hidden from assistive technology (all content is accessible via screen reader).
+
+Reference: These checks are required to satisfy constitution §V accessibility requirements and must be verified for all new review-stage UI components.

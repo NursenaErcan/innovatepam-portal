@@ -1,9 +1,9 @@
 ﻿# PROJECT_SUMMARY
 
 ## 1. Project Overview
-InnovatEPAM Portal is an internal innovation management application for collecting employee ideas and supporting a structured admin review workflow. The project has now progressed through four implemented phases, moving from a core role-based portal, to category-aware smart submission forms, to secure multi-media support with protected attachment handling, and most recently to draft management capabilities enabling submitters to save work-in-progress ideas.
+InnovatEPAM Portal is an internal innovation management application for collecting employee ideas and supporting a structured admin review workflow. The project has now progressed through five implemented phases, moving from a core role-based portal, to category-aware smart submission forms, to secure multi-media support with protected attachment handling, to draft management, and now to a complete multi-stage review pipeline.
 
-The current application state includes authentication, role-based workflows, dynamic submission structures, multi-file upload support, secure attachment access, draft lifecycle management, and full implementation documentation.
+The current application state includes authentication, role-based workflows, dynamic submission structures, multi-file upload support, secure attachment access, draft lifecycle management, multi-stage review with stage-scoped feedback, and full implementation documentation.
 
 ## 2. Completed Phases
 
@@ -44,6 +44,20 @@ The current application state includes authentication, role-based workflows, dyn
 - Form reset after successful submission (new or draft save).
 - Status-based access control: `draft` vs `submitted` with different UI actions.
 
+### Phase 5 Multi-Stage Review (Completed)
+- Multi-stage review pipeline implemented across four stages:
+	- Initial Screening
+	- Technical Review
+	- Business Impact Review
+	- Final Decision
+- Sequential stage transitions with explicit Previous/Next stage controls.
+- StageComment system for stage-scoped admin feedback.
+- Submitter visibility of admin feedback in submitter dashboard surfaces.
+- Structured admin queues with active and resolved ideas sections.
+- Final decision gating for accepted/rejected outcomes at Final Decision stage.
+- reviewStage lifecycle initialization and status-aware progression.
+- Accessibility validation improvements for review pipeline and stage feedback interactions.
+
 ## 3. Implementation Details
 
 ### Phase 3 Multi-Media Support Architecture
@@ -71,6 +85,16 @@ Phase 4 introduced submission lifecycle separation enabling submitters to save w
 - **Submitter Dashboard**: Draft cards show "Edit Draft", "Delete Draft", and "Submit Draft" action buttons only for draft status.
 - **Read-Only Enforcement**: Submitted ideas (status `submitted`) show no edit/delete buttons and are read-only for submitters.
 
+### Phase 5 Multi-Stage Review Architecture
+Phase 5 introduced a lifecycle-aware review pipeline with relational stage feedback and role-specific visibility boundaries.
+
+- **Idea.reviewStage Enum Lifecycle**: `Idea.reviewStage` tracks stage progression through Initial Screening, Technical Review, Business Impact Review, and Final Decision.
+- **Sequential Stage Controls**: Admin pipeline enforces step-wise transitions (Previous/Next) and blocks invalid boundary jumps.
+- **StageComment Relational Model**: `StageComment` records are linked to `Idea` and stage context, preserving chronological stage feedback history.
+- **Visibility Boundaries**: Admin surfaces can access full moderation context; submitter surfaces expose feedback content while withholding admin identity details.
+- **Structured Queues**: Admin review queue is split into active vs resolved sections for clearer decision lifecycle tracking.
+- **Decision Gate Enforcement**: Accepted/Rejected transitions are gated behind Final Decision stage.
+
 ## 4. Architecture Improvements
 
 ### Transition From Single Attachment to Relational Attachment System
@@ -87,6 +111,7 @@ The Prisma schema has evolved incrementally across all phases:
 - Phase 1 established core entities such as `User`, `Idea`, `Attachment`, `EvaluationComment`, and `Session`.
 - Phase 2 extended `Idea` with JSON `customFields`.
 - Phase 3 reshaped attachment storage from a single attachment reference into a relational ordered attachment collection.
+- Phase 5 extended `Idea` with `reviewStage` lifecycle state and introduced `StageComment` as a relational stage-feedback model.
 
 This evolution preserved continuity while allowing each phase to deepen capability without replacing the entire data model.
 
@@ -128,6 +153,14 @@ Phase 4 introduced submission mode separation challenges:
 - **Solution**: Button uses `type="button"` with `onClick={() => void handleAction("draft")}` to bypass form onSubmit handler.
 - **Validation**: Form submission mode correctly routed to appropriate API endpoints.
 
+### Phase 5: Multi-Stage Review Engineering and Debugging Challenges
+- **reviewStage null initialization**: Ensuring draft ideas remained `reviewStage = null` while submitted ideas initialized predictably.
+- **Old admin UI replacement**: Migrating from single-status review controls to stage pipeline controls without regressing prior behaviors.
+- **StageComment visibility bug**: Submitter-facing stage feedback initially failed to render despite persisted data.
+- **Submitter dashboard data-path debugging**: Required end-to-end tracing of Prisma query selection, page serialization, and component prop flow.
+- **Hydration warning investigation**: Locale-sensitive date formatting caused server/client mismatch warnings in development.
+- **Next.js cache/dev-server conflicts**: Stale dev cache/process reuse intermittently served outdated component code and delayed verification.
+
 ## 6. AI Collaboration
 SpecKit and GitHub Copilot were used iteratively across multiple phases rather than as one-time scaffolding tools.
 
@@ -145,21 +178,19 @@ InnovatEPAM Portal now includes:
 - Multi-file uploads with secure attachment handling.
 - Admin review workflow with status transitions and evaluation comments.
 - **Draft management**: Save, edit, delete, and submit ideas as drafts with private visibility.
+- **Phase 5 multi-stage review**: Initial Screening → Technical Review → Business Impact Review → Final Decision with sequential transitions.
+- **Stage feedback lifecycle**: StageComment system, submitter visibility of admin feedback, and structured active/resolved review queues.
+- **Final decision governance**: Accepted/Rejected decisions gated at Final Decision stage.
 - Form state management with proper reset behavior after successful submissions.
 
 ### Completed Deliverables
 ✅ Phase 1: Core Portal (authentication, roles, submissions, admin review)  
 ✅ Phase 2: Smart Submission Forms (category-aware dynamic fields)  
 ✅ Phase 3: Multi-Media Support (attachments, previews, secure downloads)  
-✅ Phase 4: Draft Management (save/edit/delete/submit drafts with privacy)
+✅ Phase 4: Draft Management (save/edit/delete/submit drafts with privacy)  
+✅ Phase 5: Multi-Stage Review (pipeline, stage transitions, stage comments, submitter feedback visibility)
 
 ## 10. Future Roadmap
-
-### Phase 5: Multi-Stage Review
-- Multiple review stages: Initial Review → Technical Evaluation → Leadership Approval
-- Stage-specific reviewer assignments and permissions
-- Automatic routing between stages based on approval status
-- Timeline tracking for each review stage
 
 ### Phase 6: Blind Review
 - Anonymized submitter information during technical evaluation
@@ -195,16 +226,6 @@ The project followed a structured specification-driven delivery flow across phas
 - Implementation executed tasks with validation and documentation updates.
 
 This process made multi-phase evolution manageable and auditable.
-
-## 10. Updated Future Roadmap
-Remaining phases are:
-
-- Phase 4 Draft Management
-- Phase 5 Multi-Stage Review
-- Phase 6 Blind Review
-- Phase 7 Scoring System
-
-These phases build on the current foundation of authenticated workflows, dynamic submission models, secure file handling, and admin review capabilities.
 
 ## 11. Final Outcome
 The current state of InnovatEPAM Portal is a fully documented multi-phase application that has progressed beyond a simple MVP. It now combines role-aware workflows, extensible idea data structures, secure relational attachments, and specification-driven engineering practices into a coherent local product suitable for continued phased expansion.

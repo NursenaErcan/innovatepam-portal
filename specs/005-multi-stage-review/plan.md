@@ -134,4 +134,24 @@ No constitution violations requiring complexity exceptions.
 - Stage transitions on `accepted` or `rejected` ideas return `409` to distinguish "forbidden by state" from "unauthorized".
 - Adding a stage comment on a draft idea returns `409`.
 - `reviewStage` null check guards all admin stage UIs; draft ideas never render stage controls.
+- Stage controls (advance/retreat) must be visibly disabled (not hidden) when unavailable, with an accessible tooltip explaining the reason for disablement (e.g., "Cannot advance past Final Decision"). This ensures compliance with accessibility requirements and provides clear feedback to all users.
 - Concurrent admin stage updates are handled by last-write-wins at the database level (SQLite); no distributed lock is required for single-tenant deployment.
+
+## Phase 1 (Setup)
+    ↓
+## Phase 2 (Foundational)
+    ↓              ↓
+## Phase 3 (US1)   ## Phase 4 (US2)
+    ↓              ↓
+## Phase 5 (US4) ←──────●
+    ↓
+## Phase 6 (US3)
+    ↓
+## Phase 7 (US5) [regression verification — no new code]
+    ↓
+## Phase 8 (Polish)
+    ↓
+         ●
+        US5
+
+(Note: US5 branches from Phase 2 for regression verification, not from Phase 5.)

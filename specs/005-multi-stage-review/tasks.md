@@ -48,7 +48,7 @@
 - [ ] T010 [US1] Implement `PATCH /api/admin/[ideaId]/review-stage` in `app/api/admin/[ideaId]/review-stage/route.ts`: validate `direction` body field, use `getNextStage`/`getPreviousStage` from `lib/review-stages.ts`, return `409` for accepted/rejected/draft ideas, return `400` for boundary violations
 - [ ] T011 [P] [US1] Create `ReviewPipeline` component in `app/components/review-pipeline.tsx`: renders an ordered four-stage progress indicator, accepts `currentStage`, `isAdmin`, `onAdvance`, `onRetreat` props; disables advance/retreat on final-state or boundary ideas
 - [ ] T012 [US1] Integrate `ReviewPipeline` with advance/retreat controls into the admin idea detail section in `app/components/admin-ideas-panel.tsx`
-- [ ] T013 [US1] Extend `GET /api/admin/ideas` response to include `reviewStage` in each idea summary in `app/api/admin/ideas/route.ts`
+- [ ] T013 [US1] Extend `GET /api/admin/ideas` response to include both `reviewStage` and full `stageComments` history in each idea summary in `app/api/admin/ideas/route.ts`. Ensure the admin API returns all stage comments for each idea.
 
 **Checkpoint**: Admin can advance and retreat ideas through all four review stages. Stage indicator renders correctly. Boundary and final-state blocking works.
 
@@ -65,7 +65,7 @@
 - [ ] T014 [US2] Implement `POST /api/admin/[ideaId]/stage-comments` in `app/api/admin/[ideaId]/stage-comments/route.ts`: validate non-empty `text` and valid `stage` enum value, reject draft ideas with `409`, persist `StageComment`, return created comment including `adminId`
 - [ ] T015 [P] [US2] Create `StageCommentForm` component in `app/components/stage-comment-form.tsx`: textarea for comment text, stage selector pre-filled with current idea stage, accepts `onSubmit(text: string, stage: ReviewStage) => void` callback prop — no direct API calls inside the component; all data-fetching logic stays in the parent `app/components/admin-ideas-panel.tsx`
 - [ ] T016 [P] [US2] Create `StageCommentList` component in `app/components/stage-comment-list.tsx`: accepts `comments: StageCommentEntry[]` and `showAdmin: boolean` props, renders comments ordered by `createdAt` ascending, displays stage label badge per comment
-- [ ] T017 [US2] Integrate `StageCommentForm` and `StageCommentList` (with `showAdmin=true`) into the admin idea detail section in `app/components/admin-ideas-panel.tsx`
+- [ ] T017 [US2] Integrate `StageCommentForm` and `StageCommentList` (with `showAdmin=true` and consuming the full `stageComments` history) into the admin idea detail section in `app/components/admin-ideas-panel.tsx`. Ensure all stage comments are loaded and displayed for each idea.
 
 **Checkpoint**: Admin can add stage-scoped comments at any active review stage. All comments persist across stage changes and are displayed chronologically with stage labels.
 
@@ -80,9 +80,9 @@
 ### Implementation for User Story 4
 
 - [ ] T018 [US4] Add immutability guard in `app/api/admin/[ideaId]/review-stage/route.ts`: return `409` when idea `status` is `accepted` or `rejected` (covers FR-004, FR-012)
-- [ ] T018b [US4] Enforce stage-gate in `app/api/admin/[ideaId]/status/route.ts`: when the requested status is `accepted` or `rejected`, verify `idea.reviewStage === "final_decision"` and return `409` with `{ error: "Idea must be at Final Decision stage before accepting or rejecting" }` if not (covers FR-007, C3)
+- [ ] T018b [US4] Enforce stage-gate in `app/api/admin/[ideaId]/status/route.ts`: when the requested status is `accepted` or `rejected`, verify `idea.reviewStage === "final_decision"` and return `409` with `{ error: "Idea must be at Final Decision stage before accepting or rejecting" }` if not (covers FR-007)
 - [ ] T019 [US4] Add `Accept` and `Reject` action buttons in `app/components/admin-ideas-panel.tsx` that are visible only when `reviewStage === "final_decision"` and `status` is not yet final; wire to existing `PATCH /api/admin/[ideaId]/status` endpoint
-- [ ] T020 [US4] Update admin idea list in `app/components/admin-ideas-panel.tsx` to move ideas with `status ∈ {accepted, rejected}` into a collapsible **Resolved Ideas** section below the active review queue; do not hide them entirely
+- [ ] T020 [US4] Update admin idea list in `app/components/admin-ideas-panel.tsx` to consume the new structured API response `{ active: IdeaSummary[], resolved: IdeaSummary[] }` and move ideas with `status ∈ {accepted, rejected}` into a collapsible **Resolved Ideas** section below the active review queue. Do not hide them entirely. Ensure the UI consumes the `active` and `resolved` arrays as returned by the API.
 - [ ] T021 [US4] Update `app/api/admin/ideas/route.ts` to return a structured response separating active pipeline ideas from resolved ones: `{ active: IdeaSummary[], resolved: IdeaSummary[] }`; active excludes `draft`, `accepted`, `rejected`; resolved contains `accepted` and `rejected` only
 
 **Checkpoint**: Final decisions are irreversible. Accepted/Rejected ideas vanish from the active queue. No stage transitions possible post-decision.
@@ -97,10 +97,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Extend `GET /api/ideas/[ideaId]` to include `reviewStage`, `reviewStageLabel`, and `stageComments` (array without `adminId`) when requester is the owner submitter in `app/api/ideas/[ideaId]/route.ts`
-- [ ] T023 [US3] Reuse `ReviewPipeline` in read-only mode (no `onAdvance`/`onRetreat`) for the submitter idea detail or dashboard card in `app/components/idea-card.tsx`
-- [ ] T024 [US3] Reuse `StageCommentList` with `showAdmin=false` to display stage feedback to submitters in `app/submitter/ideas/page.tsx` or submitter idea detail view
-- [ ] T025 [US3] Ensure `reviewStage` and `stageComments` are `null`/`[]` for draft ideas in the submitter-facing API response in `app/api/ideas/[ideaId]/route.ts`
+- [X] T022 [US3] Extend `GET /api/ideas/[ideaId]` to include `reviewStage`, `reviewStageLabel`, and `stageComments` (array without `adminId`) when requester is the owner submitter in `app/api/ideas/[ideaId]/route.ts`
+- [X] T023 [US3] Reuse `ReviewPipeline` in read-only mode (no `onAdvance`/`onRetreat`) for the submitter idea detail or dashboard card in `app/components/idea-card.tsx`
+- [X] T024 [US3] Reuse `StageCommentList` with `showAdmin=false` to display stage feedback to submitters in `app/submitter/ideas/page.tsx` or submitter idea detail view
+- [X] T025 [US3] Ensure `reviewStage` and `stageComments` are `null`/`[]` for draft ideas in the submitter-facing API response in `app/api/ideas/[ideaId]/route.ts`
 
 **Checkpoint**: Submitters see current review stage and admin feedback on submitted ideas. Drafts show no review stage. Admin identity is not exposed.
 
@@ -129,10 +129,10 @@
 
 **Purpose**: Quality gates, regression validation, and success criteria verification across all user stories.
 
-- [ ] T030 [P] Run `npm run lint` and resolve any TypeScript strict-mode errors introduced by Phase 5 changes
-- [ ] T031 [P] Run `npm run build` and confirm zero build errors
+- [X] T030 [P] Run `npm run lint` and resolve any TypeScript strict-mode errors introduced by Phase 5 changes
+- [X] T031 [P] Run `npm run build` and confirm zero build errors
 - [ ] T032 Run the Phase 1–4 backward compatibility checklist from `specs/005-multi-stage-review/quickstart.md` to confirm zero regressions
-- [ ] T033 [P] Verify SC-001 through SC-006 using the measurement reference table in `specs/005-multi-stage-review/quickstart.md`
+- [ ] T033 [P] Verify SC-001 through SC-006 using the measurement reference table in `specs/005-multi-stage-review/quickstart.md`. Explicitly complete all keyboard/focus accessibility validation steps for ReviewPipeline, StageCommentForm, and StageCommentList as listed in quickstart.md (tab navigation, visible focus, keyboard-only submission, disabled controls focus/tooltip, screen-reader labels).
 
 ---
 

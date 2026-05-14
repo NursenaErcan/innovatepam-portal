@@ -1,7 +1,11 @@
-"use client";
+﻿"use client";
 
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import IdeaCard from "@/app/components/idea-card";
+import { ReviewPipeline } from "@/app/components/review-pipeline";
+import { StageCommentForm } from "@/app/components/stage-comment-form";
+import { StageCommentList } from "@/app/components/stage-comment-list";
+import { REVIEW_STAGES, type ReviewStage } from "@/lib/review-stages";
 
 type AdminIdea = {
   id: string;
@@ -9,6 +13,7 @@ type AdminIdea = {
   description: string;
   category: string;
   status: string;
+  reviewStage: ReviewStage | null;
   customFields?: unknown;
   createdAt: string | Date;
   submitter: {
@@ -31,17 +36,27 @@ type AdminIdea = {
       email: string;
     };
   }>;
+  stageComments: Array<{
+    id: string;
+    stage: ReviewStage;
+    stageLabel?: string;
+    text: string;
+    createdAt: string | Date;
+    admin?: {
+      id: string;
+      email: string;
+    };
+  }>;
 };
 
 type AdminIdeasPanelProps = {
   initialIdeas: AdminIdea[];
 };
 
-const STATUSES = ["submitted", "under_review", "accepted", "rejected"];
-
 export default function AdminIdeasPanel({ initialIdeas }: AdminIdeasPanelProps) {
   const [ideas, setIdeas] = useState(initialIdeas);
   const [error, setError] = useState<string | null>(null);
+  const [submittingCommentIdeaId, setSubmittingCommentIdeaId] = useState<string | null>(null);
 
   async function refreshIdeas() {
     const response = await fetch("/api/admin/ideas");
@@ -53,50 +68,49 @@ export default function AdminIdeasPanel({ initialIdeas }: AdminIdeasPanelProps) 
     setIdeas(payload.ideas ?? []);
   }
 
-  async function onStatusChange(ideaId: string, status: string) {
+  async function onStageTransition(ideaId: string, direction: "forward" | "backward") {
     setError(null);
 
-    const response = await fetch(`/api/admin/${ideaId}/status`, {
+    const response = await fetch(`/api/admin/${ideaId}/review-stage`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ direction }),
     });
 
     if (!response.ok) {
-      const payload = await response.json().catch(() => ({ error: "Status update failed." }));
-      setError(payload.error ?? "Status update failed.");
+      const payload = await response.json().catch(() => ({ error: "Stage transition failed." }));
+      setError(payload.error ?? "Stage transition failed.");
       return;
     }
 
     await refreshIdeas();
   }
 
-  async function onAddComment(event: FormEvent<HTMLFormElement>, ideaId: string) {
-    event.preventDefault();
+  async function onAddStageComment(ideaId: string, text: string, stage: ReviewStage) {
     setError(null);
+    setSubmittingCommentIdeaId(ideaId);
 
-    const formData = new FormData(event.currentTarget);
-    const commentText = String(formData.get("commentText") ?? "").trim();
-
-    if (!commentText) {
+    if (!text.trim()) {
       setError("Comment cannot be empty.");
+      setSubmittingCommentIdeaId(null);
       return;
     }
 
-    const response = await fetch(`/api/admin/${ideaId}/comments`, {
+    const response = await fetch(`/api/admin/${ideaId}/stage-comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ commentText }),
+      body: JSON.stringify({ text, stage }),
     });
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({ error: "Comment submission failed." }));
       setError(payload.error ?? "Comment submission failed.");
+      setSubmittingCommentIdeaId(null);
       return;
     }
 
-    event.currentTarget.reset();
     await refreshIdeas();
+    setSubmittingCommentIdeaId(null);
   }
 
   return (
@@ -107,43 +121,50 @@ export default function AdminIdeasPanel({ initialIdeas }: AdminIdeasPanelProps) 
         <section key={idea.id} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <IdeaCard idea={idea} showSubmitter showCustomFields />
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label htmlFor={`status-${idea.id}`} className="block text-sm font-medium text-slate-700">
-                Update status
-              </label>
-              <select
-                id={`status-${idea.id}`}
-                defaultValue={idea.status}
-                onChange={(event) => onStatusChange(idea.id, event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-              >
-                {STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status.replaceAll("_", " ")}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="space-y-4">
+            <ReviewPipeline
+              currentStage={idea.reviewStage}
+              isAdmin
+              onAdvance={() => onStageTransition(idea.id, "forward")}
+              onRetreat={() => onStageTransition(idea.id, "backward")}
+              disableAdvance={
+                !idea.reviewStage ||
+                idea.status === "accepted" ||
+                idea.status === "rejected" ||
+                idea.status === "draft" ||
+                REVIEW_STAGES.indexOf(idea.reviewStage) === REVIEW_STAGES.length - 1
+              }
+              disableRetreat={
+                !idea.reviewStage ||
+                idea.status === "accepted" ||
+                idea.status === "rejected" ||
+                idea.status === "draft" ||
+                REVIEW_STAGES.indexOf(idea.reviewStage) <= 0
+              }
+            />
 
-            <form onSubmit={(event) => onAddComment(event, idea.id)} className="space-y-2">
-              <label htmlFor={`comment-${idea.id}`} className="block text-sm font-medium text-slate-700">
-                Add evaluation comment
-              </label>
-              <input
-                id={`comment-${idea.id}`}
-                name="commentText"
-                type="text"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                required
+            {idea.reviewStage ? (
+              <StageCommentForm
+                currentStage={idea.reviewStage}
+                onSubmit={(text, stage) => onAddStageComment(idea.id, text, stage)}
+                submitting={submittingCommentIdeaId === idea.id}
               />
-              <button
-                type="submit"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Save comment
-              </button>
-            </form>
+            ) : (
+              <p className="text-sm text-slate-600">This idea is not yet assigned to the review pipeline.</p>
+            )}
+
+            {idea.stageComments.length > 0 ? (
+              <StageCommentList
+                comments={idea.stageComments.map((comment) => ({
+                  ...comment,
+                  createdAt:
+                    typeof comment.createdAt === "string" ? comment.createdAt : comment.createdAt.toISOString(),
+                }))}
+                showAdmin
+              />
+            ) : (
+              <p className="text-sm text-slate-500">No stage comments yet.</p>
+            )}
           </div>
         </section>
       ))}

@@ -1,5 +1,7 @@
 ﻿import StatusBadge from "@/app/components/status-badge";
 import CustomFieldsView from "@/app/components/custom-fields-view";
+import { StageCommentList } from "@/app/components/stage-comment-list";
+import type { ReviewStage } from "@/lib/review-stages";
 
 type IdeaCardProps = {
   idea: {
@@ -27,6 +29,12 @@ type IdeaCardProps = {
         email: string;
       };
     }>;
+    stageComments?: Array<{
+      id: string;
+      text: string;
+      stage: ReviewStage;
+      createdAt: string | Date;
+    }>;
     submitter?: {
       email: string;
     };
@@ -49,6 +57,7 @@ export default function IdeaCard({
   actionBusy = false,
 }: IdeaCardProps) {
   const isDraft = idea.status === "draft";
+  const stageComments = idea.stageComments ?? [];
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -67,6 +76,18 @@ export default function IdeaCard({
       <p className="mt-4 whitespace-pre-wrap text-sm text-slate-700">{idea.description}</p>
 
       {showCustomFields ? <CustomFieldsView category={idea.category} customFields={idea.customFields} /> : null}
+
+      {!showSubmitter ? <div>Debug comments count: {stageComments?.length ?? 0}</div> : null}
+
+      {!showSubmitter && stageComments && stageComments.length > 0 && (
+        <StageCommentList
+          comments={stageComments.map((comment) => ({
+            ...comment,
+            createdAt: typeof comment.createdAt === "string" ? comment.createdAt : comment.createdAt.toISOString(),
+          }))}
+          showAdmin={false}
+        />
+      )}
 
       {idea.attachments && idea.attachments.length > 0 ? (
         <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm">
@@ -166,4 +187,3 @@ export default function IdeaCard({
     </article>
   );
 }
-
