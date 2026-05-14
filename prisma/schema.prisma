@@ -13,6 +13,7 @@ enum UserRole {
 }
 
 enum IdeaStatus {
+  draft
   submitted
   under_review
   accepted

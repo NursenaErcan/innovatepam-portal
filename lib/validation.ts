@@ -12,6 +12,12 @@ type IdeaValidationResult = {
   fieldErrors?: Record<string, string>;
 };
 
+export type SubmissionMode = "draft" | "final";
+
+export function parseSubmissionMode(value: unknown): SubmissionMode {
+  return value === "draft" ? "draft" : "final";
+}
+
 export function validateEmail(email: string): string | null {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return "Provide a valid email address.";
@@ -53,6 +59,52 @@ export function validateIdeaInput(input: {
 
   if (!Object.values(IdeaCategory).includes(input.category as IdeaCategory)) {
     return { error: "Invalid idea category." };
+  }
+
+  if (input.attachmentCount > MAX_ATTACHMENTS_PER_IDEA) {
+    return {
+      error: `A maximum of ${MAX_ATTACHMENTS_PER_IDEA} attachments is allowed.`,
+      fieldErrors: {
+        attachments: `Select up to ${MAX_ATTACHMENTS_PER_IDEA} files.`,
+      },
+    };
+  }
+
+  const fieldErrors: Record<string, string> = {};
+
+  input.attachments.forEach((attachment, index) => {
+    if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(attachment.mimeType)) {
+      fieldErrors[`attachments.${index}`] =
+        "Only PDF, PNG, JPG, JPEG, and DOCX files are supported.";
+      return;
+    }
+
+    if (attachment.size > MAX_UPLOAD_SIZE_BYTES) {
+      fieldErrors[`attachments.${index}`] = "Attachment must be 10MB or smaller.";
+    }
+  });
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      error: "One or more attachments are invalid.",
+      fieldErrors,
+    };
+  }
+
+  return null;
+}
+
+export function validateDraftIdeaInput(input: {
+  title?: string;
+  description?: string;
+  category?: string;
+  attachmentCount: number;
+  attachments: Array<{ mimeType: string; size: number }>;
+}): IdeaValidationResult | null {
+  if (input.category?.trim()) {
+    if (!Object.values(IdeaCategory).includes(input.category as IdeaCategory)) {
+      return { error: "Invalid idea category." };
+    }
   }
 
   if (input.attachmentCount > MAX_ATTACHMENTS_PER_IDEA) {
@@ -189,6 +241,7 @@ export function validateStatusTransition(current: IdeaStatus, next: string): str
   const target = next as IdeaStatus;
 
   const allowedTransitions: Record<IdeaStatus, IdeaStatus[]> = {
+    draft: ["submitted"],
     submitted: ["under_review", "accepted", "rejected"],
     under_review: ["accepted", "rejected"],
     accepted: ["accepted"],
@@ -200,4 +253,8 @@ export function validateStatusTransition(current: IdeaStatus, next: string): str
   }
 
   return null;
+}
+
+export function canMutateDraft(status: IdeaStatus): boolean {
+  return status === "draft";
 }

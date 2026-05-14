@@ -147,3 +147,31 @@ export async function requireRoleForPage(role: AppRole) {
 export function canAccessIdeaAttachment(user: { id: string; role: UserRole }, submitterId: string): boolean {
   return user.role === "admin" || user.id === submitterId;
 }
+
+export async function requireDraftOwnerFromRequest(request: NextRequest, ideaId: string): Promise<
+  | {
+      ok: true;
+      auth: NonNullable<Awaited<ReturnType<typeof requireRoleFromRequest>>>;
+      idea: NonNullable<Awaited<ReturnType<typeof prisma.idea.findUnique>>>;
+    }
+  | { ok: false; reason: "unauthorized" | "not-found" | "forbidden" }
+> {
+  const auth = await requireRoleFromRequest(request, "submitter");
+  if (!auth) {
+    return { ok: false, reason: "unauthorized" };
+  }
+
+  const idea = await prisma.idea.findUnique({
+    where: { id: ideaId },
+  });
+
+  if (!idea || idea.submitterId !== auth.user.id) {
+    if (!idea) {
+      return { ok: false, reason: "not-found" };
+    }
+
+    return { ok: false, reason: "forbidden" };
+  }
+
+  return { ok: true, auth, idea };
+}

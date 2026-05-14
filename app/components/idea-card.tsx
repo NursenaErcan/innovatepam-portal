@@ -1,4 +1,4 @@
-import StatusBadge from "@/app/components/status-badge";
+﻿import StatusBadge from "@/app/components/status-badge";
 import CustomFieldsView from "@/app/components/custom-fields-view";
 
 type IdeaCardProps = {
@@ -33,24 +33,30 @@ type IdeaCardProps = {
   };
   showSubmitter?: boolean;
   showCustomFields?: boolean;
+  onEditDraft?: (ideaId: string) => void;
+  onDeleteDraft?: (ideaId: string) => void;
+  onSubmitDraft?: (ideaId: string) => void;
+  actionBusy?: boolean;
 };
 
 export default function IdeaCard({
   idea,
   showSubmitter = false,
   showCustomFields = false,
+  onEditDraft,
+  onDeleteDraft,
+  onSubmitDraft,
+  actionBusy = false,
 }: IdeaCardProps) {
+  const isDraft = idea.status === "draft";
+
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">{idea.title}</h3>
-          <p className="mt-1 text-sm text-slate-600">
-            Category: {idea.category.replaceAll("_", " ")}
-          </p>
-          <p className="text-sm text-slate-600">
-            Created: {new Date(idea.createdAt).toLocaleString()}
-          </p>
+          <p className="mt-1 text-sm text-slate-600">Category: {idea.category.replaceAll("_", " ")}</p>
+          <p className="text-sm text-slate-600">Created: {new Date(idea.createdAt).toLocaleString()}</p>
           {showSubmitter && idea.submitter ? (
             <p className="text-sm text-slate-700">Submitter: {idea.submitter.email}</p>
           ) : null}
@@ -60,9 +66,7 @@ export default function IdeaCard({
 
       <p className="mt-4 whitespace-pre-wrap text-sm text-slate-700">{idea.description}</p>
 
-      {showCustomFields ? (
-        <CustomFieldsView category={idea.category} customFields={idea.customFields} />
-      ) : null}
+      {showCustomFields ? <CustomFieldsView category={idea.category} customFields={idea.customFields} /> : null}
 
       {idea.attachments && idea.attachments.length > 0 ? (
         <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm">
@@ -104,13 +108,44 @@ export default function IdeaCard({
                 <p className="text-slate-600">
                   {(attachment.size / 1024).toFixed(1)} KB • {attachment.mimeType}
                 </p>
-                <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
-                  <p>previewUrl: {attachment.previewUrl ?? "(none)"}</p>
-                  <p>downloadUrl: {attachment.downloadUrl}</p>
-                </div>
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {isDraft && (onEditDraft || onDeleteDraft || onSubmitDraft) ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {onEditDraft ? (
+            <button
+              type="button"
+              onClick={() => onEditDraft(idea.id)}
+              disabled={actionBusy}
+              className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+            >
+              Edit draft
+            </button>
+          ) : null}
+          {onSubmitDraft ? (
+            <button
+              type="button"
+              onClick={() => onSubmitDraft(idea.id)}
+              disabled={actionBusy}
+              className="rounded bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              Submit draft
+            </button>
+          ) : null}
+          {onDeleteDraft ? (
+            <button
+              type="button"
+              onClick={() => onDeleteDraft(idea.id)}
+              disabled={actionBusy}
+              className="rounded border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+            >
+              Delete draft
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -131,3 +166,4 @@ export default function IdeaCard({
     </article>
   );
 }
+
