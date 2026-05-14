@@ -1,4 +1,5 @@
 import StatusBadge from "@/app/components/status-badge";
+import CustomFieldsView from "@/app/components/custom-fields-view";
 
 type IdeaCardProps = {
   idea: {
@@ -7,6 +8,7 @@ type IdeaCardProps = {
     description: string;
     category: string;
     status: string;
+    customFields?: unknown;
     createdAt: string | Date;
     attachment?: {
       fileName: string;
@@ -27,9 +29,14 @@ type IdeaCardProps = {
     };
   };
   showSubmitter?: boolean;
+  showCustomFields?: boolean;
 };
 
-export default function IdeaCard({ idea, showSubmitter = false }: IdeaCardProps) {
+export default function IdeaCard({
+  idea,
+  showSubmitter = false,
+  showCustomFields = false,
+}: IdeaCardProps) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -49,6 +56,10 @@ export default function IdeaCard({ idea, showSubmitter = false }: IdeaCardProps)
       </div>
 
       <p className="mt-4 whitespace-pre-wrap text-sm text-slate-700">{idea.description}</p>
+
+      {showCustomFields ? (
+        <CustomFieldsView category={idea.category} customFields={idea.customFields} />
+      ) : null}
 
       {idea.attachment ? (
         <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm">

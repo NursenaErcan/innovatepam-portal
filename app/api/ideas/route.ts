@@ -2,11 +2,11 @@ import crypto from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
-import { IdeaCategory } from "@prisma/client";
+import { IdeaCategory, Prisma } from "@prisma/client";
 import { requireRoleFromRequest } from "@/lib/auth";
 import { resolveUploadDirectory } from "@/lib/db";
 import { prisma } from "@/lib/prisma";
-import { validateIdeaInput } from "@/lib/validation";
+import { validateCategoryCustomFields, validateIdeaInput } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   const auth = await requireRoleFromRequest(request, "submitter");
@@ -25,7 +25,22 @@ export async function GET(request: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ ideas }, { status: 200 });
+  return NextResponse.json(
+    {
+      ideas: ideas.map((idea) => ({
+        id: idea.id,
+        title: idea.title,
+        description: idea.description,
+        category: idea.category,
+        status: idea.status,
+        customFields: idea.customFields,
+        createdAt: idea.createdAt,
+        attachment: idea.attachment,
+        evaluationComments: idea.evaluationComments,
+      })),
+    },
+    { status: 200 },
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -38,6 +53,7 @@ export async function POST(request: NextRequest) {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
+  const rawCustomFields = String(formData.get("customFields") ?? "{}").trim();
 
   const files = formData
     .getAll("attachment")
@@ -57,6 +73,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
+  let customFields: Record<string, unknown> | null = null;
+  if (rawCustomFields.length > 0) {
+    try {
+      const parsed = JSON.parse(rawCustomFields) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        customFields = parsed as Record<string, unknown>;
+      } else {
+        customFields = null;
+      }
+    } catch {
+      return NextResponse.json(
+        {
+          error: "Dynamic fields are invalid.",
+          fieldErrors: {
+            customFields: "Dynamic fields payload must be valid JSON.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  const fieldErrors = validateCategoryCustomFields(category, customFields);
+  if (Object.keys(fieldErrors).length > 0) {
+    return NextResponse.json(
+      {
+        error: "Dynamic fields are invalid.",
+        fieldErrors,
+      },
+      { status: 400 },
+    );
+  }
+
   const uploadDir = resolveUploadDirectory();
   await mkdir(uploadDir, { recursive: true });
 
@@ -73,6 +122,7 @@ export async function POST(request: NextRequest) {
       title,
       description,
       category: category as IdeaCategory,
+      customFields: customFields ? (customFields as Prisma.InputJsonValue) : undefined,
       submitterId: auth.user.id,
       attachment: {
         create: {

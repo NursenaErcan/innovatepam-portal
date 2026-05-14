@@ -36,5 +36,21 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ ideas }, { status: 200 });
+  return NextResponse.json(
+    {
+      ideas: ideas.map((idea) => ({
+        id: idea.id,
+        title: idea.title,
+        description: idea.description,
+        category: idea.category,
+        status: idea.status,
+        customFields: idea.customFields,
+        createdAt: idea.createdAt,
+        submitter: idea.submitter,
+        attachment: idea.attachment,
+        evaluationComments: idea.evaluationComments,
+      })),
+    },
+    { status: 200 },
+  );
 }
