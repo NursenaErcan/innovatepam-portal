@@ -4,15 +4,13 @@ import {
   isIdeaCategory,
   type ImplementationComplexity,
 } from "@/lib/category-fields";
-import { MAX_UPLOAD_SIZE_BYTES } from "@/lib/db";
+import { ALLOWED_ATTACHMENT_MIME_TYPES } from "@/lib/attachments";
+import { MAX_ATTACHMENTS_PER_IDEA, MAX_UPLOAD_SIZE_BYTES } from "@/lib/db";
 
-export const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
-  "application/pdf",
-  "image/png",
-  "image/jpg",
-  "image/jpeg",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-]);
+type IdeaValidationResult = {
+  error: string;
+  fieldErrors?: Record<string, string>;
+};
 
 export function validateEmail(email: string): string | null {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -47,27 +45,44 @@ export function validateIdeaInput(input: {
   description: string;
   category: string;
   attachmentCount: number;
-  attachmentMimeType: string;
-  attachmentSize: number;
-}): string | null {
+  attachments: Array<{ mimeType: string; size: number }>;
+}): IdeaValidationResult | null {
   if (!input.title.trim() || !input.description.trim() || !input.category.trim()) {
-    return "Title, description, and category are required.";
+    return { error: "Title, description, and category are required." };
   }
 
   if (!Object.values(IdeaCategory).includes(input.category as IdeaCategory)) {
-    return "Invalid idea category.";
+    return { error: "Invalid idea category." };
   }
 
-  if (input.attachmentCount !== 1) {
-    return "Exactly one attachment is required.";
+  if (input.attachmentCount > MAX_ATTACHMENTS_PER_IDEA) {
+    return {
+      error: `A maximum of ${MAX_ATTACHMENTS_PER_IDEA} attachments is allowed.`,
+      fieldErrors: {
+        attachments: `Select up to ${MAX_ATTACHMENTS_PER_IDEA} files.`,
+      },
+    };
   }
 
-  if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(input.attachmentMimeType)) {
-    return "Only PDF, PNG, JPG, JPEG, and DOCX files are supported.";
-  }
+  const fieldErrors: Record<string, string> = {};
 
-  if (input.attachmentSize > MAX_UPLOAD_SIZE_BYTES) {
-    return "Attachment must be 10MB or smaller.";
+  input.attachments.forEach((attachment, index) => {
+    if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(attachment.mimeType)) {
+      fieldErrors[`attachments.${index}`] =
+        "Only PDF, PNG, JPG, JPEG, and DOCX files are supported.";
+      return;
+    }
+
+    if (attachment.size > MAX_UPLOAD_SIZE_BYTES) {
+      fieldErrors[`attachments.${index}`] = "Attachment must be 10MB or smaller.";
+    }
+  });
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      error: "One or more attachments are invalid.",
+      fieldErrors,
+    };
   }
 
   return null;

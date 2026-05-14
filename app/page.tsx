@@ -18,7 +18,7 @@ export default async function Home() {
       <section className="w-full rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="text-3xl font-bold text-slate-900">Manage Innovation Ideas Locally</h1>
         <p className="mt-3 max-w-3xl text-slate-600">
-          InnovatEPAM Portal lets submitters share ideas with one attachment and enables admins
+          InnovatEPAM Portal lets submitters share ideas with multiple attachments and enables admins
           to review, comment, and update statuses through a simple local MVP workflow.
         </p>
 
@@ -39,7 +39,7 @@ export default async function Home() {
 
         <ul className="mt-8 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
           <li className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            Submitters create ideas with title, description, category, and one attachment.
+            Submitters create ideas with title, description, category, and optional multiple attachments.
           </li>
           <li className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             Admins review all submissions, set statuses, and leave evaluation comments.

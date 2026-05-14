@@ -1,7 +1,17 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { IDEA_CATEGORIES, IMPLEMENTATION_COMPLEXITY_OPTIONS } from "@/lib/category-fields";
+
+const MAX_ATTACHMENTS_PER_IDEA = 10;
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpg",
+  "image/jpeg",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
 
 type IdeaFormProps = {
   onSubmitted: () => Promise<void>;
@@ -20,7 +30,7 @@ export default function IdeaForm({ onSubmitted }: IdeaFormProps) {
   const [clientProblem, setClientProblem] = useState("");
   const [businessImpact, setBusinessImpact] = useState("");
   const [targetIndustry, setTargetIndustry] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -98,20 +108,74 @@ export default function IdeaForm({ onSubmitted }: IdeaFormProps) {
     return errors;
   }
 
+  function getAttachmentErrors(inputFiles: File[]): Record<string, string> {
+    const errors: Record<string, string> = {};
+
+    if (inputFiles.length > MAX_ATTACHMENTS_PER_IDEA) {
+      errors.attachments = `Select up to ${MAX_ATTACHMENTS_PER_IDEA} files.`;
+    }
+
+    inputFiles.forEach((file, index) => {
+      if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(file.type)) {
+        errors[`attachments.${index}`] = "Only PDF, PNG, JPG, JPEG, and DOCX files are supported.";
+        return;
+      }
+
+      if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+        errors[`attachments.${index}`] = "Attachment must be 10MB or smaller.";
+      }
+    });
+
+    return errors;
+  }
+
+  function onAddFiles(event: ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(event.target.files ?? []);
+    if (selected.length === 0) {
+      return;
+    }
+
+    const mergedFiles = [...files, ...selected];
+    const attachmentErrors = getAttachmentErrors(mergedFiles);
+    setFiles(mergedFiles);
+    setFieldErrors((previous) => ({
+      ...Object.fromEntries(
+        Object.entries(previous).filter(([key]) => !key.startsWith("attachments")),
+      ),
+      ...attachmentErrors,
+    }));
+
+    event.target.value = "";
+  }
+
+  function onRemoveFile(indexToRemove: number) {
+    const nextFiles = files.filter((_, index) => index !== indexToRemove);
+    setFiles(nextFiles);
+
+    const attachmentErrors = getAttachmentErrors(nextFiles);
+    setFieldErrors((previous) => ({
+      ...Object.fromEntries(
+        Object.entries(previous).filter(([key]) => !key.startsWith("attachments")),
+      ),
+      ...attachmentErrors,
+    }));
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setFieldErrors({});
 
-    if (!file) {
-      setError("Please attach one file.");
-      return;
-    }
-
     const customFieldErrors = validateCustomFields();
-    if (Object.keys(customFieldErrors).length > 0) {
+    const attachmentErrors = getAttachmentErrors(files);
+    const nextFieldErrors = {
+      ...customFieldErrors,
+      ...attachmentErrors,
+    };
+
+    if (Object.keys(nextFieldErrors).length > 0) {
       setError("Please fix the highlighted category details.");
-      setFieldErrors(customFieldErrors);
+      setFieldErrors(nextFieldErrors);
       return;
     }
 
@@ -121,7 +185,9 @@ export default function IdeaForm({ onSubmitted }: IdeaFormProps) {
     formData.append("description", description);
     formData.append("category", category);
     formData.append("customFields", JSON.stringify(getCustomFieldsPayload()));
-    formData.append("attachment", file);
+    files.forEach((file) => {
+      formData.append("attachment", file);
+    });
 
     try {
       const response = await fetch("/api/ideas", {
@@ -150,7 +216,7 @@ export default function IdeaForm({ onSubmitted }: IdeaFormProps) {
       setClientProblem("");
       setBusinessImpact("");
       setTargetIndustry("");
-      setFile(null);
+      setFiles([]);
       await onSubmitted();
     } catch {
       setError("Failed to submit idea.");
@@ -411,16 +477,44 @@ export default function IdeaForm({ onSubmitted }: IdeaFormProps) {
 
       <div>
         <label htmlFor="idea-file" className="block text-sm font-medium text-slate-700">
-          Attachment (PDF, PNG, JPG, JPEG, DOCX, max 10MB)
+          Attachments (optional, up to 10 files, PDF/PNG/JPG/JPEG/DOCX, max 10MB each)
         </label>
         <input
           id="idea-file"
           type="file"
           accept=".pdf,.png,.jpg,.jpeg,.docx"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          multiple
+          onChange={onAddFiles}
           className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-          required
         />
+        {fieldErrors.attachments ? (
+          <p className="mt-1 text-sm text-rose-700">{fieldErrors.attachments}</p>
+        ) : null}
+
+        {files.length > 0 ? (
+          <ul className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            {files.map((file, index) => (
+              <li key={`${file.name}-${file.size}-${index}`} className="rounded border border-slate-200 bg-white p-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{file.name}</p>
+                    <p className="text-xs text-slate-600">{(file.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveFile(index)}
+                    className="rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    Remove
+                  </button>
+                </div>
+                {fieldErrors[`attachments.${index}`] ? (
+                  <p className="mt-1 text-sm text-rose-700">{fieldErrors[`attachments.${index}`]}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
 
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}

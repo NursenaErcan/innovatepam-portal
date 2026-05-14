@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeAttachmentsForApi } from "@/lib/attachments";
 import { requireRoleFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -16,7 +17,11 @@ export async function GET(request: NextRequest) {
           email: true,
         },
       },
-      attachment: true,
+      attachments: {
+        orderBy: {
+          displayOrder: "asc",
+        },
+      },
       evaluationComments: {
         include: {
           admin: {
@@ -47,7 +52,7 @@ export async function GET(request: NextRequest) {
         customFields: idea.customFields,
         createdAt: idea.createdAt,
         submitter: idea.submitter,
-        attachment: idea.attachment,
+        attachments: normalizeAttachmentsForApi(idea.attachments),
         evaluationComments: idea.evaluationComments,
       })),
     },

@@ -143,3 +143,7 @@ export async function requireRoleForPage(role: AppRole) {
 
   return user;
 }
+
+export function canAccessIdeaAttachment(user: { id: string; role: UserRole }, submitterId: string): boolean {
+  return user.role === "admin" || user.id === submitterId;
+}
