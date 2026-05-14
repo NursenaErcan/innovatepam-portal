@@ -9,6 +9,7 @@ type AdminIdea = {
   description: string;
   category: string;
   status: string;
+  customFields?: unknown;
   createdAt: string | Date;
   submitter: {
     email: string;
@@ -101,7 +102,7 @@ export default function AdminIdeasPanel({ initialIdeas }: AdminIdeasPanelProps) 
 
       {ideas.map((idea) => (
         <section key={idea.id} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <IdeaCard idea={idea} showSubmitter />
+          <IdeaCard idea={idea} showSubmitter showCustomFields />
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>

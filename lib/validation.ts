@@ -1,4 +1,9 @@
 import { IdeaCategory, IdeaStatus } from "@prisma/client";
+import {
+  IMPLEMENTATION_COMPLEXITY_OPTIONS,
+  isIdeaCategory,
+  type ImplementationComplexity,
+} from "@/lib/category-fields";
 import { MAX_UPLOAD_SIZE_BYTES } from "@/lib/db";
 
 export const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
@@ -66,6 +71,99 @@ export function validateIdeaInput(input: {
   }
 
   return null;
+}
+
+function getRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function getNonEmptyString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function validateCategoryCustomFields(
+  category: string,
+  customFields: unknown,
+): Record<string, string> {
+  const fieldErrors: Record<string, string> = {};
+
+  if (!isIdeaCategory(category)) {
+    return {
+      category: "Invalid idea category.",
+    };
+  }
+
+  if (category === "Other") {
+    return fieldErrors;
+  }
+
+  const fields = getRecord(customFields);
+
+  if (category === "Technical_Innovation") {
+    if (!getNonEmptyString(fields.architectureImpact)) {
+      fieldErrors.architectureImpact = "Architecture impact is required.";
+    }
+
+    if (!getNonEmptyString(fields.technologyStack)) {
+      fieldErrors.technologyStack = "Technology stack is required.";
+    }
+
+    const complexity = fields.implementationComplexity;
+    if (
+      typeof complexity !== "string" ||
+      !IMPLEMENTATION_COMPLEXITY_OPTIONS.includes(
+        complexity as ImplementationComplexity,
+      )
+    ) {
+      fieldErrors.implementationComplexity =
+        "Implementation complexity must be low, medium, or high.";
+    }
+  }
+
+  if (category === "Process_Improvement") {
+    if (!getNonEmptyString(fields.currentProcess)) {
+      fieldErrors.currentProcess = "Current process is required.";
+    }
+
+    if (!getNonEmptyString(fields.proposedImprovement)) {
+      fieldErrors.proposedImprovement = "Proposed improvement is required.";
+    }
+
+    const hours = fields.estimatedTimeSavingsHours;
+    if (
+      typeof hours !== "number" ||
+      !Number.isInteger(hours) ||
+      hours <= 0
+    ) {
+      fieldErrors.estimatedTimeSavingsHours =
+        "Estimated time savings must be a positive integer number of hours.";
+    }
+  }
+
+  if (category === "Client_Solution") {
+    if (!getNonEmptyString(fields.clientProblem)) {
+      fieldErrors.clientProblem = "Client problem is required.";
+    }
+
+    if (!getNonEmptyString(fields.businessImpact)) {
+      fieldErrors.businessImpact = "Business impact is required.";
+    }
+
+    if (!getNonEmptyString(fields.targetIndustry)) {
+      fieldErrors.targetIndustry = "Target industry is required.";
+    }
+  }
+
+  return fieldErrors;
 }
 
 export function validateStatusTransition(current: IdeaStatus, next: string): string | null {

@@ -44,6 +44,7 @@ model Idea {
   title              String
   description        String
   category           IdeaCategory
+  customFields       Json?
   status             IdeaStatus          @default(submitted)
   submitter          User                @relation(fields: [submitterId], references: [id])
   submitterId        String
