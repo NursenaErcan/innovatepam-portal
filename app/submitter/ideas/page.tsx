@@ -2,6 +2,7 @@
 import { normalizeAttachmentsForApi } from "@/lib/attachments";
 import { requireRoleForPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { aggregateScores, canViewScoreSummaryForSubmitter } from "@/lib/scoring-aggregation";
 
 export default async function SubmitterIdeasPage() {
   const user = await requireRoleForPage("submitter");
@@ -56,16 +57,22 @@ export default async function SubmitterIdeasPage() {
           createdAt: true,
         },
       },
+      scores: true,
     },
     orderBy: {
       createdAt: "desc",
     },
   });
 
-  const serializedIdeas = ideas.map((idea) => ({
-    ...idea,
-    attachments: normalizeAttachmentsForApi(idea.attachments),
-  }));
+  const serializedIdeas = ideas.map((idea) => {
+    const canShowScores = canViewScoreSummaryForSubmitter(idea.status, idea.reviewStage);
+
+    return {
+      ...idea,
+      attachments: normalizeAttachmentsForApi(idea.attachments),
+      scoreSummary: canShowScores ? aggregateScores(idea.scores) : null,
+    };
+  });
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 p-6">

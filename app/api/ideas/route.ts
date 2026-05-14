@@ -7,6 +7,7 @@ import { normalizeAttachmentsForApi } from "@/lib/attachments";
 import { requireRoleFromRequest } from "@/lib/auth";
 import { resolveUploadDirectory } from "@/lib/db";
 import { prisma } from "@/lib/prisma";
+import { aggregateScores, canViewScoreSummaryForSubmitter } from "@/lib/scoring-aggregation";
 import { validateCategoryCustomFields, validateIdeaInput } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
@@ -26,24 +27,30 @@ export async function GET(request: NextRequest) {
       evaluationComments: {
         orderBy: { createdAt: "desc" },
       },
+      scores: true,
     },
     orderBy: { createdAt: "desc" },
   });
 
   return NextResponse.json(
     {
-      ideas: ideas.map((idea) => ({
-        id: idea.id,
-        title: idea.title,
-        description: idea.description,
-        category: idea.category,
-        status: idea.status,
-        reviewStage: idea.reviewStage,
-        customFields: idea.customFields,
-        createdAt: idea.createdAt,
-        attachments: normalizeAttachmentsForApi(idea.attachments),
-        evaluationComments: idea.evaluationComments,
-      })),
+      ideas: ideas.map((idea) => {
+        const canShowScores = canViewScoreSummaryForSubmitter(idea.status, idea.reviewStage);
+
+        return {
+          id: idea.id,
+          title: idea.title,
+          description: idea.description,
+          category: idea.category,
+          status: idea.status,
+          reviewStage: idea.reviewStage,
+          customFields: idea.customFields,
+          createdAt: idea.createdAt,
+          attachments: normalizeAttachmentsForApi(idea.attachments),
+          evaluationComments: idea.evaluationComments,
+          scoreSummary: canShowScores ? aggregateScores(idea.scores) : null,
+        };
+      }),
     },
     { status: 200 },
   );
@@ -197,3 +204,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
