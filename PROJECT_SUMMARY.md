@@ -1,11 +1,11 @@
 ﻿# PROJECT_SUMMARY
 
-## 1. Project Overview
+## 1. Overview
 InnovatEPAM Portal is an internal innovation management application for collecting employee ideas and supporting a structured admin review workflow. The project has now progressed through seven implemented phases, moving from a core role-based portal, to category-aware smart submission forms, to secure multi-media support with protected attachment handling, to draft management, to a complete multi-stage review pipeline, to a blind review system with identity masking during technical evaluation, and now to a multi-dimensional scoring system with admin evaluation and submitter feedback.
 
 The current application state includes authentication, role-based workflows, dynamic submission structures, multi-file upload support, secure attachment access, draft lifecycle management, multi-stage review with stage-scoped feedback, blind review identity masking, admin accept/reject decisioning at final stage, multi-dimensional scoring (Innovation, Feasibility, Business Impact), score aggregation with average calculations, conditional submitter score visibility after Final Decision, and full implementation documentation.
 
-## 2. Completed Phases
+## 2. Phases Completed
 
 ### Phase 1 Core Portal
 - Registration, login, and logout with database-backed sessions.
@@ -17,14 +17,14 @@ The current application state includes authentication, role-based workflows, dyn
 
 ### Phase 2 Smart Submission Forms
 - Category-aware dynamic forms in the submitter submission flow.
-- JSON-based `customFields` storage on ideas.
+- JSON-based customFields storage on ideas.
 - Category-specific validation on both client and server.
 - Admin rendering of category-specific fields using readable labels.
 - Backward-compatible extension of the original idea model without breaking Phase 1 flows.
 
 ### Phase 3 Multi-Media Support
 - Multiple attachments per idea submission.
-- Relational `Attachment` model with one-to-many attachment support.
+- Relational Attachment model with one-to-many attachment support.
 - Secure attachment API for protected file access.
 - Owner/admin-only attachment access control.
 - Image thumbnail previews in admin review surfaces.
@@ -42,14 +42,14 @@ The current application state includes authentication, role-based workflows, dyn
 - Final submission converts draft status to submitted.
 - Submitted ideas become read-only for submitters.
 - Form reset after successful submission (new or draft save).
-- Status-based access control: `draft` vs `submitted` with different UI actions.
+- Status-based access control: draft vs submitted with different UI actions.
 
 ### Phase 5 Multi-Stage Review (Completed)
 - Multi-stage review pipeline implemented across four stages:
-	- Initial Screening
-	- Technical Review
-	- Business Impact Review
-	- Final Decision
+  - Initial Screening
+  - Technical Review
+  - Business Impact Review
+  - Final Decision
 - Sequential stage transitions with explicit Previous/Next stage controls.
 - StageComment system for stage-scoped admin feedback.
 - Submitter visibility of admin feedback in submitter dashboard surfaces.
@@ -60,11 +60,11 @@ The current application state includes authentication, role-based workflows, dyn
 
 ### Phase 6 Blind Review (Completed)
 - Blind review masking during Initial Screening, Technical Review, and Business Impact Review stages.
-- Admin sees "Anonymous Submitter" instead of email during blind stages.
+- Admin sees Anonymous Submitter instead of email during blind stages.
 - Submitter identity automatically revealed at Final Decision stage.
 - Submitter identity remains visible after idea is accepted or rejected.
 - Accept and Reject buttons visible only to admin at Final Decision stage when idea status is submitted.
-- Submitter dashboard now displays review stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) instead of only showing "Submitted" status.
+- Submitter dashboard now displays review stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) instead of only showing Submitted status.
 - Automatic stage initialization for submitted ideas to initial_screening.
 - Drafts remain reviewStage = null until final submission.
 - All Phase 1-5 functionality preserved and validated.
@@ -72,7 +72,7 @@ The current application state includes authentication, role-based workflows, dyn
 
 ### Phase 7 Scoring System (Completed)
 - Multi-dimensional scoring system with three evaluation criteria: Innovation, Feasibility, Business Impact.
-- Relational `IdeaScore` model storing dimension, value (1-5 scale), reviewer, and timestamp.
+- Relational IdeaScore model storing dimension, value (1-5 scale), reviewer, and timestamp.
 - Admin scoring during any review stage before Final Decision.
 - Score input component with 1-5 numerical validation and atomic upsert behavior.
 - Admin score editing and updates per reviewer (composite key: ideaId + dimension + reviewerId).
@@ -81,7 +81,17 @@ The current application state includes authentication, role-based workflows, dyn
 - Score persistence maintained for audit purposes even after idea resolution.
 - Scoring compatibility with blind review and resolved ideas.
 
-## 3. Implementation Details
+## 3. Technical Stack
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- Prisma ORM
+- SQLite
+- bcrypt
+- SpecKit
+- GitHub Copilot
+
+## 4. Architecture and Implementation Details
 
 ### Phase 3 Multi-Media Support Architecture
 Phase 3 introduced a complete attachment-system upgrade rather than a superficial UI enhancement.
@@ -93,32 +103,30 @@ Phase 3 introduced a complete attachment-system upgrade rather than a superficia
 - Admins can see image thumbnail previews for supported image MIME types.
 - Image previews open inline in the browser when accessed without a forced-download flag.
 - Download links force file download using explicit query parameter behavior.
-- Attachments preserve user-selected ordering through stored `displayOrder` values.
+- Attachments preserve user-selected ordering through stored displayOrder values.
 - Upload validation supports configurable count and size constraints.
 - Phase 1 and Phase 2 regression checks remain part of the delivery workflow.
 
 ### Phase 4 Draft Management Architecture
 Phase 4 introduced submission lifecycle separation enabling submitters to save work-in-progress ideas.
 
-- **Draft Lifecycle**: Ideas are created with `status = "draft"` when "Save as Draft" is clicked, and remain editable until final submission.
-- **Status-Based Access**: Draft ideas have `status = "draft"` in the schema enum, allowing fine-grained access control and filtering.
-- **API Separation**: PATCH `/api/ideas/[ideaId]` updates existing drafts, POST `/api/ideas/[ideaId]/submit` finalizes drafts, DELETE removes them.
-- **Admin Exclusion**: GET `/api/admin/ideas` includes `where: { status: { not: "draft" } }`, ensuring drafts never appear in review queues.
-- **Form State Management**: Form resets after new idea creation or draft save, and maintains edit state when modifying drafts.
-- **Submitter Dashboard**: Draft cards show "Edit Draft", "Delete Draft", and "Submit Draft" action buttons only for draft status.
-- **Read-Only Enforcement**: Submitted ideas (status `submitted`) show no edit/delete buttons and are read-only for submitters.
+- Draft Lifecycle: Ideas are created with status = draft when Save as Draft is clicked, and remain editable until final submission.
+- Status-Based Access: Draft ideas have status = draft in the schema enum, allowing fine-grained access control and filtering.
+- API Separation: PATCH /api/ideas/[ideaId] updates existing drafts, POST /api/ideas/[ideaId]/submit finalizes drafts, DELETE removes them.
+- Admin Exclusion: GET /api/admin/ideas includes where: { status: { not: draft } }, ensuring drafts never appear in review queues.
+- Form State Management: Form resets after new idea creation or draft save, and maintains edit state when modifying drafts.
+- Submitter Dashboard: Draft cards show Edit Draft, Delete Draft, and Submit Draft action buttons only for draft status.
+- Read-Only Enforcement: Submitted ideas (status submitted) show no edit/delete buttons and are read-only for submitters.
 
 ### Phase 5 Multi-Stage Review Architecture
 Phase 5 introduced a lifecycle-aware review pipeline with relational stage feedback and role-specific visibility boundaries.
 
-- **Idea.reviewStage Enum Lifecycle**: `Idea.reviewStage` tracks stage progression through Initial Screening, Technical Review, Business Impact Review, and Final Decision.
-- **Sequential Stage Controls**: Admin pipeline enforces step-wise transitions (Previous/Next) and blocks invalid boundary jumps.
-- **StageComment Relational Model**: `StageComment` records are linked to `Idea` and stage context, preserving chronological stage feedback history.
-- **Visibility Boundaries**: Admin surfaces can access full moderation context; submitter surfaces expose feedback content while withholding admin identity details.
-- **Structured Queues**: Admin review queue is split into active vs resolved sections for clearer decision lifecycle tracking.
-- **Decision Gate Enforcement**: Accepted/Rejected transitions are gated behind Final Decision stage.
-
-## 4. Architecture Improvements
+- Idea.reviewStage Enum Lifecycle: Idea.reviewStage tracks stage progression through Initial Screening, Technical Review, Business Impact Review, and Final Decision.
+- Sequential Stage Controls: Admin pipeline enforces step-wise transitions (Previous/Next) and blocks invalid boundary jumps.
+- StageComment Relational Model: StageComment records are linked to Idea and stage context, preserving chronological stage feedback history.
+- Visibility Boundaries: Admin surfaces can access full moderation context; submitter surfaces expose feedback content while withholding admin identity details.
+- Structured Queues: Admin review queue is split into active vs resolved sections for clearer decision lifecycle tracking.
+- Decision Gate Enforcement: Accepted/Rejected transitions are gated behind Final Decision stage.
 
 ### Transition From Single Attachment to Relational Attachment System
 The original design stored only one attachment per idea. Phase 3 evolved this into a one-to-many attachment relationship, allowing each idea to hold multiple associated files with stable ordering and metadata. This improved extensibility and aligned the schema with real product needs.
@@ -126,36 +134,32 @@ The original design stored only one attachment per idea. Phase 3 evolved this in
 ### Secure Route-Based File Access
 Earlier attachment handling relied on direct public file paths. The updated design routes attachment access through protected API handlers, enabling enforcement of owner/admin authorization, differentiated preview versus download behavior, and future extensibility for auditing or additional content controls.
 
-### JSON `customFields` Architecture From Phase 2
-Phase 2 introduced `customFields` as a JSON-backed structure to support dynamic category-specific submission fields without repeated schema churn. That design remains central in the current architecture and demonstrates how the product evolved additively while keeping the idea model flexible.
+### JSON customFields Architecture From Phase 2
+Phase 2 introduced customFields as a JSON-backed structure to support dynamic category-specific submission fields without repeated schema churn. That design remains central in the current architecture and demonstrates how the product evolved additively while keeping the idea model flexible.
 
 ### Prisma Schema Evolution Across Phases
 The Prisma schema has evolved incrementally across all phases:
-- Phase 1 established core entities such as `User`, `Idea`, `Attachment`, `EvaluationComment`, and `Session`.
-- Phase 2 extended `Idea` with JSON `customFields`.
+- Phase 1 established core entities such as User, Idea, Attachment, EvaluationComment, and Session.
+- Phase 2 extended Idea with JSON customFields.
 - Phase 3 reshaped attachment storage from a single attachment reference into a relational ordered attachment collection.
-- Phase 5 extended `Idea` with `reviewStage` lifecycle state and introduced `StageComment` as a relational stage-feedback model.
+- Phase 5 extended Idea with reviewStage lifecycle state and introduced StageComment as a relational stage-feedback model.
 
 This evolution preserved continuity while allowing each phase to deepen capability without replacing the entire data model.
 
 ### Phase 7 Scoring System Architecture
 Phase 7 introduced a multi-dimensional scoring system enabling quantitative evaluation of submitted ideas.
 
-- **IdeaScore Relational Model**: Scores persisted with (ideaId, dimension, reviewerId) composite key enabling multiple reviewers per idea.
+- IdeaScore Relational Model: Scores persisted with (ideaId, dimension, reviewerId) composite key enabling multiple reviewers per idea.
+- Score Aggregation Flow:
+  - Admin submits 1-5 score -> POST /api/admin/[ideaId]/score upserts record
+  - GET /api/admin/[ideaId]/score retrieves all scores
+  - aggregateScores() computes averages per dimension
+  - Submitter visibility: GET /api/ideas/[ideaId]/score-summary (gated by status/stage)
+- Admin-Only Score Editing: Score updates gated behind admin authentication.
+- Conditional Submitter Score Visibility: Visible when reviewStage === final_decision OR status in (accepted, rejected). ScoreSummary component displays Innovation/Feasibility/Business Impact with rounded averages.
+- Scoring Validation: Values must be 1-5 integers. Drafts cannot be scored (409 Conflict).
 
-- **Score Aggregation Flow**: 
-  - Admin submits 1-5 score → POST `/api/admin/[ideaId]/score` upsets record
-  - GET `/api/admin/[ideaId]/score` retrieves all scores
-  - `aggregateScores()` computes averages per dimension
-  - Submitter visibility: GET `/api/ideas/[ideaId]/score-summary` (gated by status/stage)
-
-- **Admin-Only Score Editing**: Score updates gated behind admin authentication.
-
-- **Conditional Submitter Score Visibility**: Visible when `reviewStage === "final_decision" OR status in ("accepted", "rejected")`. ScoreSummary component displays Innovation/Feasibility/Business Impact with rounded averages.
-
-- **Scoring Validation**: Values must be 1-5 integers. Drafts cannot be scored (409 Conflict).
-
-## 5. Engineering Challenges
+## 5. Challenges and Solutions
 
 ### SQLite Locking During Branch Switching
 SQLite-based local development is simple and effective, but branch switching introduced occasional locking and migration friction when schema or generated client state changed between branches. This required careful synchronization of migrations, Prisma client generation, and local database state.
@@ -172,83 +176,82 @@ Schema evolution across phases created synchronization concerns between Prisma s
 ### Phase 4: Draft Status Handling and Form State Management
 Phase 4 introduced submission mode separation challenges:
 
-**Challenge 1: submissionMode Parameter Not Being Read**
-- **Issue**: Form was sending `submissionMode = "draft"` in FormData, but POST handler wasn't extracting it, causing all ideas to default to `submitted` status.
-- **Root Cause**: Missing extraction line in POST `/api/ideas` handler.
-- **Solution**: Added `const submissionMode = String(formData.get("submissionMode") ?? "final").trim();` to read the parameter, then set `status: submissionMode === "draft" ? "draft" : "submitted"` on creation.
-- **Validation**: Added console logging to trace submissionMode through the API to confirm correct status assignment.
+#### Challenge 1: submissionMode Parameter Not Being Read
+- Issue: Form was sending submissionMode = draft in FormData, but POST handler was not extracting it, causing all ideas to default to submitted status.
+- Root Cause: Missing extraction line in POST /api/ideas handler.
+- Solution: Added const submissionMode = String(formData.get("submissionMode") ?? "final").trim(); to read the parameter, then set status: submissionMode === draft ? draft : submitted on creation.
+- Validation: Added console logging to trace submissionMode through the API to confirm correct status assignment.
 
-**Challenge 2: Admin Visibility of Drafts**
-- **Issue**: Draft ideas were appearing in admin review queues despite being intended as private work-in-progress.
-- **Root Cause**: GET `/api/admin/ideas` had no filter to exclude drafts.
-- **Solution**: Added `where: { status: { not: "draft" } }` to the Prisma query, ensuring only submitted/under_review/accepted/rejected ideas appear to admins.
-- **Validation**: Query tested to confirm drafts are completely excluded from admin endpoints.
+#### Challenge 2: Admin Visibility of Drafts
+- Issue: Draft ideas were appearing in admin review queues despite being intended as private work-in-progress.
+- Root Cause: GET /api/admin/ideas had no filter to exclude drafts.
+- Solution: Added where: { status: { not: draft } } to the Prisma query, ensuring only submitted/under_review/accepted/rejected ideas appear to admins.
+- Validation: Query tested to confirm drafts are completely excluded from admin endpoints.
 
-**Challenge 3: Form Reset and Edit State Coordination**
-- **Issue**: Form didn't properly reset after saving new drafts, leaving fields populated for new idea entry.
-- **Solution**: Enhanced reset logic to handle three scenarios: final submission (reset + clear), new draft save (reset for new entry), and draft edit (keep edit mode with save confirmation message).
+#### Challenge 3: Form Reset and Edit State Coordination
+- Issue: Form did not properly reset after saving new drafts, leaving fields populated for new idea entry.
+- Solution: Enhanced reset logic to handle three scenarios: final submission (reset + clear), new draft save (reset for new entry), and draft edit (keep edit mode with save confirmation message).
 
-**Challenge 4: Button Handler Type Confusion**
-- **Issue**: "Save as Draft" button needed to explicitly call draft handler, not default form submission.
-- **Solution**: Button uses `type="button"` with `onClick={() => void handleAction("draft")}` to bypass form onSubmit handler.
-- **Validation**: Form submission mode correctly routed to appropriate API endpoints.
+#### Challenge 4: Button Handler Type Confusion
+- Issue: Save as Draft button needed to explicitly call draft handler, not default form submission.
+- Solution: Button uses type="button" with onClick={() => void handleAction("draft")} to bypass form onSubmit handler.
+- Validation: Form submission mode correctly routed to appropriate API endpoints.
 
 ### Phase 5: Multi-Stage Review Engineering and Debugging Challenges
-- **reviewStage null initialization**: Ensuring draft ideas remained `reviewStage = null` while submitted ideas initialized predictably.
-- **Old admin UI replacement**: Migrating from single-status review controls to stage pipeline controls without regressing prior behaviors.
-- **StageComment visibility bug**: Submitter-facing stage feedback initially failed to render despite persisted data.
-- **Submitter dashboard data-path debugging**: Required end-to-end tracing of Prisma query selection, page serialization, and component prop flow.
-- **Hydration warning investigation**: Locale-sensitive date formatting caused server/client mismatch warnings in development.
-- **Next.js cache/dev-server conflicts**: Stale dev cache/process reuse intermittently served outdated component code and delayed verification.
+- reviewStage null initialization: Ensuring draft ideas remained reviewStage = null while submitted ideas initialized predictably.
+- Old admin UI replacement: Migrating from single-status review controls to stage pipeline controls without regressing prior behaviors.
+- StageComment visibility bug: Submitter-facing stage feedback initially failed to render despite persisted data.
+- Submitter dashboard data-path debugging: Required end-to-end tracing of Prisma query selection, page serialization, and component prop flow.
+- Hydration warning investigation: Locale-sensitive date formatting caused server/client mismatch warnings in development.
+- Next.js cache/dev-server conflicts: Stale dev cache/process reuse intermittently served outdated component code and delayed verification.
 
 ### Phase 6: Blind Review Engineering Challenges
-- **Admin could see submitter email at every review stage**
-  - **Issue**: Submitter email was exposed in admin panel and API responses during Initial Screening, Technical Review, and Business Impact Review stages.
-  - **Root Cause**: Data mapping functions in server page and API route were not filtering submitter identity based on review stage.
-  - **Solution**: Implemented `canRevealSubmitter()` function in both [app/admin/ideas/page.tsx](app/admin/ideas/page.tsx) and [app/api/admin/ideas/route.ts](app/api/admin/ideas/route.ts) to conditionally mask identity during blind stages and reveal at final_decision or resolved statuses.
-  - **Validation**: Verified that submitter.email is set to "Anonymous Submitter" during blind stages and actual email appears at Final Decision and after acceptance/rejection.
+- Admin could see submitter email at every review stage
+  - Issue: Submitter email was exposed in admin panel and API responses during Initial Screening, Technical Review, and Business Impact Review stages.
+  - Root Cause: Data mapping functions in server page and API route were not filtering submitter identity based on review stage.
+  - Solution: Implemented canRevealSubmitter() function in both app/admin/ideas/page.tsx and app/api/admin/ideas/route.ts to conditionally mask identity during blind stages and reveal at final_decision or resolved statuses.
+  - Validation: Verified that submitter.email is set to Anonymous Submitter during blind stages and actual email appears at Final Decision and after acceptance/rejection.
 
-- **Blind review identity masking not enforced consistently**
-  - **Issue**: Submitter identity visibility needed to be enforced across multiple data paths: server-side rendering, client-side API refresh, and component rendering.
-  - **Root Cause**: Normalization was happening at component level but not at data source level.
-  - **Solution**: Moved blind review logic to data mapping layer in both [app/admin/ideas/page.tsx](app/admin/ideas/page.tsx) and [app/api/admin/ideas/route.ts](app/api/admin/ideas/route.ts), ensuring consistency regardless of data path.
-  - **Validation**: Tested both initial page load and client-side refresh to confirm identity masking behavior.
+- Blind review identity masking not enforced consistently
+  - Issue: Submitter identity visibility needed to be enforced across multiple data paths: server-side rendering, client-side API refresh, and component rendering.
+  - Root Cause: Normalization was happening at component level but not at data source level.
+  - Solution: Moved blind review logic to data mapping layer in both app/admin/ideas/page.tsx and app/api/admin/ideas/route.ts, ensuring consistency regardless of data path.
+  - Validation: Tested both initial page load and client-side refresh to confirm identity masking behavior.
 
-- **Accept/Reject buttons not appearing for admin at Final Decision**
-  - **Issue**: Admin had no visual Accept/Reject action buttons at Final Decision stage despite status update API being available.
-  - **Root Cause**: Admin panel was rendering all stages the same way; no conditional rendering for Final Decision actions.
-  - **Solution**: Added condition in [app/components/admin-ideas-panel.tsx](app/components/admin-ideas-panel.tsx) to render Accept/Reject buttons only when `reviewStage === "final_decision" && status === "submitted"`.
-  - **Validation**: Confirmed buttons appear only at Final Decision stage and successfully call status API to transition to accepted/rejected.
+- Accept/Reject buttons not appearing for admin at Final Decision
+  - Issue: Admin had no visual Accept/Reject action buttons at Final Decision stage despite status update API being available.
+  - Root Cause: Admin panel was rendering all stages the same way; no conditional rendering for Final Decision actions.
+  - Solution: Added condition in app/components/admin-ideas-panel.tsx to render Accept/Reject buttons only when reviewStage === final_decision && status === submitted.
+  - Validation: Confirmed buttons appear only at Final Decision stage and successfully call status API to transition to accepted/rejected.
 
-- **Submitter dashboard still showed only "Submitted" instead of review stage**
-  - **Issue**: Submitter dashboard was displaying only "Submitted" status badge, not indicating which review stage the idea is in (Initial Screening, Technical Review, etc.).
-  - **Root Cause**: [app/api/ideas/route.ts](app/api/ideas/route.ts) GET endpoint was not including `reviewStage` in response payload, and [app/components/idea-card.tsx](app/components/idea-card.tsx) had no logic to display stage labels.
-  - **Solution**: Added `reviewStage` to submitter ideas API response payload, and updated [app/components/idea-card.tsx](app/components/idea-card.tsx) and [app/components/status-badge.tsx](app/components/status-badge.tsx) to render stage-specific badge labels when idea is submitted with a valid reviewStage.
-  - **Validation**: Submitter dashboard now displays correct stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) for submitted ideas.
+- Submitter dashboard still showed only Submitted instead of review stage
+  - Issue: Submitter dashboard was displaying only Submitted status badge, not indicating which review stage the idea is in (Initial Screening, Technical Review, etc.).
+  - Root Cause: app/api/ideas/route.ts GET endpoint was not including reviewStage in response payload, and app/components/idea-card.tsx had no logic to display stage labels.
+  - Solution: Added reviewStage to submitter ideas API response payload, and updated app/components/idea-card.tsx and app/components/status-badge.tsx to render stage-specific badge labels when idea is submitted with a valid reviewStage.
+  - Validation: Submitter dashboard now displays correct stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) for submitted ideas.
 
-  ### Phase 7: Scoring System Engineering Challenges
+### Phase 7: Scoring System Engineering Challenges
+- Scoring UI integration into admin dashboard
+  - Issue: Admin panel needed to display score input fields for all three dimensions without cluttering the interface.
+  - Solution: Created dedicated IdeaScoreSection component encapsulating score inputs. Positioned after stage transition controls in admin panel for logical workflow placement.
 
-  - **Scoring UI integration into admin dashboard**
-    - **Issue**: Admin panel needed to display score input fields for all three dimensions without cluttering the interface.
-    - **Solution**: Created dedicated `IdeaScoreSection` component encapsulating score inputs. Positioned after stage transition controls in admin panel for logical workflow placement.
+- Submitter score visibility regression
+  - Issue: After removing temporary debug output, submitter score summary disappeared completely despite scoreSummary data flowing through components.
+  - Root Cause: app/components/idea-card.tsx lacked scoreSummary field in type definition and rendering logic.
+  - Solution: Added scoreSummary?: AggregateScore | null to IdeaCardProps type, imported ScoreSummary component, and added conditional render block before EvaluationComments section.
+  - Validation: Scores now display correctly for accepted/rejected ideas in submitter dashboard.
 
-  - **Submitter score visibility regression**
-    - **Issue**: After removing temporary debug output, submitter score summary disappeared completely despite scoreSummary data flowing through components.
-    - **Root Cause**: [app/components/idea-card.tsx](app/components/idea-card.tsx) lacked `scoreSummary` field in type definition and rendering logic.
-    - **Solution**: Added `scoreSummary?: AggregateScore | null` to IdeaCardProps type, imported ScoreSummary component, and added conditional render block before EvaluationComments section.
-    - **Validation**: Scores now display correctly for accepted/rejected ideas in submitter dashboard.
+- reviewStage lifecycle synchronization
+  - Issue: Score visibility depended on both status and reviewStage fields being synchronized correctly.
+  - Solution: Implemented canViewScoreSummaryForSubmitter() utility checking both conditions: reviewStage === final_decision OR (status === accepted OR status === rejected).
 
-  - **reviewStage lifecycle synchronization**
-    - **Issue**: Score visibility depended on both status and reviewStage fields being synchronized correctly.
-    - **Solution**: Implemented `canViewScoreSummaryForSubmitter()` utility checking both conditions: reviewStage === "final_decision" OR (status === "accepted" OR status === "rejected").
+- Final Decision gating for score visibility
+  - Issue: Submitters could not view scores while idea was still in Technical Review or Business Impact Review stages.
+  - Solution: Gated score visibility behind Final Decision stage transition to maintain blind review integrity.
 
-  - **Final Decision gating for score visibility**
-    - **Issue**: Submitters could not view scores while idea was still in Technical Review or Business Impact Review stages.
-    - **Solution**: Gated score visibility behind Final Decision stage transition to maintain blind review integrity.
-
-  - **Score aggregation rendering issues**
-    - **Issue**: Average score computation failed when dimension had no scores (empty array → NaN).
-    - **Solution**: Modified aggregation to return null for empty dimensions instead of NaN. ScoreSummary formats null as "—" (em-dash).
+- Score aggregation rendering issues
+  - Issue: Average score computation failed when dimension had no scores (empty array -> NaN).
+  - Solution: Modified aggregation to return null for empty dimensions instead of NaN. ScoreSummary formats null as --.
 
 ## 6. AI Collaboration
 SpecKit and GitHub Copilot were used iteratively across multiple phases rather than as one-time scaffolding tools.
@@ -258,51 +261,7 @@ SpecKit and GitHub Copilot were used iteratively across multiple phases rather t
 - The combination supported an iterative delivery loop where each phase could be clarified, planned, implemented, and re-validated with explicit traceability.
 - Across multiple phases, this workflow helped reduce requirement drift, expose inconsistencies early, and keep architecture evolution understandable.
 
-## 9. Final Current Status
-InnovatEPAM Portal now includes:
-
-- Authentication with session-based login.
-- Role-based access control (submitter, admin).
-- Dynamic submission forms with category-specific fields.
-- Multi-file uploads with secure attachment handling.
-- Admin review workflow with status transitions and evaluation comments.
-- **Draft management**: Save, edit, delete, and submit ideas as drafts with private visibility.
-- **Phase 5 multi-stage review**: Initial Screening → Technical Review → Business Impact Review → Final Decision with sequential transitions.
-- **Stage feedback lifecycle**: StageComment system, submitter visibility of admin feedback, and structured active/resolved review queues.
-- **Final decision governance**: Accepted/Rejected decisions gated at Final Decision stage.
-- **Phase 6 blind review**: Submitter identity masked during Initial Screening, Technical Review, and Business Impact Review; revealed at Final Decision and after resolution.
-- **Admin accept/reject actions**: Accept and Reject buttons visible only to admin at Final Decision stage for submitted ideas.
-- **Submitter stage visibility**: Dashboard displays stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) instead of only "Submitted" status.
-- Form state management with proper reset behavior after successful submissions.
-- **Phase 7 multi-dimensional scoring**: Innovation, Feasibility, and Business Impact dimensions with 1-5 scale.
-- **Admin score editing**: Admins can create and update scores during review prior to final resolution.
-- **Score aggregation**: Average calculations across multiple reviewers per dimension.
-- **Submitter score visibility**: Evaluation scores shown after Final Decision for accepted/rejected ideas.
-- **Score persistence**: Audit trail maintained even after idea is resolved.
-- **Blind review and resolved-idea compatibility**: Scoring works with identity masking and remains visible in resolved ideas.
-
-### Completed Deliverables
-✅ Phase 1 Core Portal completed  
-✅ Phase 2 Smart Submission Forms completed  
-✅ Phase 3 Multi-Media Support completed  
-✅ Phase 4 Draft Management completed  
-✅ Phase 5 Multi-Stage Review completed  
-✅ Phase 6 Blind Review completed  
-✅ Phase 7 Scoring System completed
-
-## 10. Future Roadmap
-
-## 7. Technical Stack
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- Prisma ORM
-- SQLite
-- bcrypt
-- SpecKit
-- GitHub Copilot
-
-## 8. Spec-Driven Delivery Workflow
+## 7. Spec-Driven Delivery Workflow
 The project followed a structured specification-driven delivery flow across phases:
 
 - Constitution established engineering principles and delivery constraints.
@@ -315,10 +274,77 @@ The project followed a structured specification-driven delivery flow across phas
 
 This process made multi-phase evolution manageable and auditable.
 
-## 11. Final Outcome
-The InnovatEPAM Portal delivery is complete as a full end-to-end innovation review workflow across all planned phases.
+## 8. Time Breakdown
+Approximate effort distribution across the delivery lifecycle:
 
-- Full end-to-end innovation review workflow completed.
-- Admin and submitter workflows complete.
-- SpecKit and Copilot workflow used across all phases for specification, planning, implementation, validation, and documentation.
+- Phase 1 Core Portal: 18%
+- Phase 2 Smart Submission Forms: 12%
+- Phase 3 Multi-Media Support: 16%
+- Phase 4 Draft Management: 12%
+- Phase 5 Multi-Stage Review: 16%
+- Phase 6 Blind Review: 10%
+- Phase 7 Scoring System: 11%
+- Cross-phase testing, debugging, and documentation: 5%
+
+Total: 100%
+
+## 9. Reflection
+
+### Key Learning
+Building in small, validated increments made a multi-phase product manageable. The biggest technical win was keeping schema evolution additive and controlled, which reduced rework and kept prior behavior stable.
+
+### What I would do differently
+- Add stronger automated regression coverage earlier, especially around API payload shape and visibility rules.
+- Introduce more shared contract tests for role-based and stage-based access boundaries.
+- Define an explicit release checklist per phase before implementation starts.
+
+### SDD vs Vibe Coding
+Specification-Driven Delivery (SDD) outperformed ad-hoc vibe coding for this project scope. SDD made requirements traceable, made ambiguity visible earlier, and reduced accidental regressions across phases. Vibe coding remained useful for rapid exploration, but only after clear boundaries were defined in the spec and plan artifacts.
+
+### AI Collaboration Insight
+AI tools were most effective when used as structured collaborators, not autopilot generators. Pairing SpecKit (for process and traceability) with Copilot (for implementation speed) produced better outcomes than either tool used in isolation.
+
+## 10. Future Roadmap
+Optional next improvements:
+
+- Replace SQLite with PostgreSQL for stronger concurrency and production readiness.
+- Add notifications (email/in-app) for stage transitions, comments, and final decisions.
+- Expand scoring with weighted dimensions and configurable criteria per category.
+- Add analytics dashboards for idea throughput, review latency, and conversion rates.
+- Introduce audit-log views for admin governance and compliance reporting.
+- Add file virus scanning and storage abstraction (S3-compatible) for attachment hardening.
+- Implement granular admin roles (reviewer, moderator, super-admin).
+- Add automated test suites for API contracts and end-to-end review flows.
+
+## 11. Final Outcome
+InnovatEPAM Portal now includes:
+
+- Authentication with session-based login.
+- Role-based access control (submitter, admin).
+- Dynamic submission forms with category-specific fields.
+- Multi-file uploads with secure attachment handling.
+- Admin review workflow with status transitions and evaluation comments.
+- Draft management: Save, edit, delete, and submit ideas as drafts with private visibility.
+- Phase 5 multi-stage review: Initial Screening -> Technical Review -> Business Impact Review -> Final Decision with sequential transitions.
+- Stage feedback lifecycle: StageComment system, submitter visibility of admin feedback, and structured active/resolved review queues.
+- Final decision governance: Accepted/Rejected decisions gated at Final Decision stage.
+- Phase 6 blind review: Submitter identity masked during Initial Screening, Technical Review, and Business Impact Review; revealed at Final Decision and after resolution.
+- Admin accept/reject actions: Accept and Reject buttons visible only to admin at Final Decision stage for submitted ideas.
+- Submitter stage visibility: Dashboard displays stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) instead of only Submitted status.
+- Form state management with proper reset behavior after successful submissions.
+- Phase 7 multi-dimensional scoring: Innovation, Feasibility, and Business Impact dimensions with 1-5 scale.
+- Admin score editing: Admins can create and update scores during review prior to final resolution.
+- Score aggregation: Average calculations across multiple reviewers per dimension.
+- Submitter score visibility: Evaluation scores shown after Final Decision for accepted/rejected ideas.
+- Score persistence: Audit trail maintained even after idea is resolved.
+- Blind review and resolved-idea compatibility: Scoring works with identity masking and remains visible in resolved ideas.
+
+### Completed Deliverables
+Phase 1 Core Portal completed
+Phase 2 Smart Submission Forms completed
+Phase 3 Multi-Media Support completed
+Phase 4 Draft Management completed
+Phase 5 Multi-Stage Review completed
+Phase 6 Blind Review completed
+Phase 7 Scoring System completed
 
