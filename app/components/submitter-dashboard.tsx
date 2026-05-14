@@ -117,9 +117,6 @@ export default function SubmitterDashboard({ initialIdeas }: SubmitterDashboardP
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
 
       <section className="space-y-4">
-        <div className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800">
-          PHASE 5 DEBUG COMPONENT REACHED
-        </div>
         <h2 className="text-lg font-semibold text-slate-900">Your Ideas</h2>
         {ideas.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">

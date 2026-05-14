@@ -1,9 +1,9 @@
 ﻿# PROJECT_SUMMARY
 
 ## 1. Project Overview
-InnovatEPAM Portal is an internal innovation management application for collecting employee ideas and supporting a structured admin review workflow. The project has now progressed through five implemented phases, moving from a core role-based portal, to category-aware smart submission forms, to secure multi-media support with protected attachment handling, to draft management, and now to a complete multi-stage review pipeline.
+InnovatEPAM Portal is an internal innovation management application for collecting employee ideas and supporting a structured admin review workflow. The project has now progressed through six implemented phases, moving from a core role-based portal, to category-aware smart submission forms, to secure multi-media support with protected attachment handling, to draft management, to a complete multi-stage review pipeline, and now to a blind review system with identity masking during technical evaluation.
 
-The current application state includes authentication, role-based workflows, dynamic submission structures, multi-file upload support, secure attachment access, draft lifecycle management, multi-stage review with stage-scoped feedback, and full implementation documentation.
+The current application state includes authentication, role-based workflows, dynamic submission structures, multi-file upload support, secure attachment access, draft lifecycle management, multi-stage review with stage-scoped feedback, blind review identity masking, admin accept/reject decisioning at final stage, and full implementation documentation.
 
 ## 2. Completed Phases
 
@@ -57,6 +57,18 @@ The current application state includes authentication, role-based workflows, dyn
 - Final decision gating for accepted/rejected outcomes at Final Decision stage.
 - reviewStage lifecycle initialization and status-aware progression.
 - Accessibility validation improvements for review pipeline and stage feedback interactions.
+
+### Phase 6 Blind Review (Completed)
+- Blind review masking during Initial Screening, Technical Review, and Business Impact Review stages.
+- Admin sees "Anonymous Submitter" instead of email during blind stages.
+- Submitter identity automatically revealed at Final Decision stage.
+- Submitter identity remains visible after idea is accepted or rejected.
+- Accept and Reject buttons visible only to admin at Final Decision stage when idea status is submitted.
+- Submitter dashboard now displays review stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) instead of only showing "Submitted" status.
+- Automatic stage initialization for submitted ideas to initial_screening.
+- Drafts remain reviewStage = null until final submission.
+- All Phase 1-5 functionality preserved and validated.
+- API mapping enforces blind review rules in both server-side page rendering and client-side refresh endpoints.
 
 ## 3. Implementation Details
 
@@ -161,6 +173,31 @@ Phase 4 introduced submission mode separation challenges:
 - **Hydration warning investigation**: Locale-sensitive date formatting caused server/client mismatch warnings in development.
 - **Next.js cache/dev-server conflicts**: Stale dev cache/process reuse intermittently served outdated component code and delayed verification.
 
+### Phase 6: Blind Review Engineering Challenges
+- **Admin could see submitter email at every review stage**
+  - **Issue**: Submitter email was exposed in admin panel and API responses during Initial Screening, Technical Review, and Business Impact Review stages.
+  - **Root Cause**: Data mapping functions in server page and API route were not filtering submitter identity based on review stage.
+  - **Solution**: Implemented `canRevealSubmitter()` function in both [app/admin/ideas/page.tsx](app/admin/ideas/page.tsx) and [app/api/admin/ideas/route.ts](app/api/admin/ideas/route.ts) to conditionally mask identity during blind stages and reveal at final_decision or resolved statuses.
+  - **Validation**: Verified that submitter.email is set to "Anonymous Submitter" during blind stages and actual email appears at Final Decision and after acceptance/rejection.
+
+- **Blind review identity masking not enforced consistently**
+  - **Issue**: Submitter identity visibility needed to be enforced across multiple data paths: server-side rendering, client-side API refresh, and component rendering.
+  - **Root Cause**: Normalization was happening at component level but not at data source level.
+  - **Solution**: Moved blind review logic to data mapping layer in both [app/admin/ideas/page.tsx](app/admin/ideas/page.tsx) and [app/api/admin/ideas/route.ts](app/api/admin/ideas/route.ts), ensuring consistency regardless of data path.
+  - **Validation**: Tested both initial page load and client-side refresh to confirm identity masking behavior.
+
+- **Accept/Reject buttons not appearing for admin at Final Decision**
+  - **Issue**: Admin had no visual Accept/Reject action buttons at Final Decision stage despite status update API being available.
+  - **Root Cause**: Admin panel was rendering all stages the same way; no conditional rendering for Final Decision actions.
+  - **Solution**: Added condition in [app/components/admin-ideas-panel.tsx](app/components/admin-ideas-panel.tsx) to render Accept/Reject buttons only when `reviewStage === "final_decision" && status === "submitted"`.
+  - **Validation**: Confirmed buttons appear only at Final Decision stage and successfully call status API to transition to accepted/rejected.
+
+- **Submitter dashboard still showed only "Submitted" instead of review stage**
+  - **Issue**: Submitter dashboard was displaying only "Submitted" status badge, not indicating which review stage the idea is in (Initial Screening, Technical Review, etc.).
+  - **Root Cause**: [app/api/ideas/route.ts](app/api/ideas/route.ts) GET endpoint was not including `reviewStage` in response payload, and [app/components/idea-card.tsx](app/components/idea-card.tsx) had no logic to display stage labels.
+  - **Solution**: Added `reviewStage` to submitter ideas API response payload, and updated [app/components/idea-card.tsx](app/components/idea-card.tsx) and [app/components/status-badge.tsx](app/components/status-badge.tsx) to render stage-specific badge labels when idea is submitted with a valid reviewStage.
+  - **Validation**: Submitter dashboard now displays correct stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) for submitted ideas.
+
 ## 6. AI Collaboration
 SpecKit and GitHub Copilot were used iteratively across multiple phases rather than as one-time scaffolding tools.
 
@@ -181,6 +218,9 @@ InnovatEPAM Portal now includes:
 - **Phase 5 multi-stage review**: Initial Screening → Technical Review → Business Impact Review → Final Decision with sequential transitions.
 - **Stage feedback lifecycle**: StageComment system, submitter visibility of admin feedback, and structured active/resolved review queues.
 - **Final decision governance**: Accepted/Rejected decisions gated at Final Decision stage.
+- **Phase 6 blind review**: Submitter identity masked during Initial Screening, Technical Review, and Business Impact Review; revealed at Final Decision and after resolution.
+- **Admin accept/reject actions**: Accept and Reject buttons visible only to admin at Final Decision stage for submitted ideas.
+- **Submitter stage visibility**: Dashboard displays stage labels (Initial Screening, Technical Review, Business Impact Review, Final Decision) instead of only "Submitted" status.
 - Form state management with proper reset behavior after successful submissions.
 
 ### Completed Deliverables
@@ -188,15 +228,10 @@ InnovatEPAM Portal now includes:
 ✅ Phase 2: Smart Submission Forms (category-aware dynamic fields)  
 ✅ Phase 3: Multi-Media Support (attachments, previews, secure downloads)  
 ✅ Phase 4: Draft Management (save/edit/delete/submit drafts with privacy)  
-✅ Phase 5: Multi-Stage Review (pipeline, stage transitions, stage comments, submitter feedback visibility)
+✅ Phase 5: Multi-Stage Review (pipeline, stage transitions, stage comments, submitter feedback visibility)  
+✅ Phase 6: Blind Review (identity masking during evaluation, accept/reject actions at final decision, stage labels in submitter dashboard)
 
 ## 10. Future Roadmap
-
-### Phase 6: Blind Review
-- Anonymized submitter information during technical evaluation
-- Configurable anonymization rules per review stage
-- Submission metadata visibility (category, attachments) without submitter identity
-- De-anonymization after final approval
 
 ### Phase 7: Scoring System
 - Scoring rubrics with weighted criteria per review stage

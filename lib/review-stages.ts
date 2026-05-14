@@ -9,6 +9,17 @@ export const REVIEW_STAGES = [
 
 export type ReviewStage = typeof REVIEW_STAGES[number];
 
+// Blind review: stages where submitter identity is hidden from admin view
+export const BLIND_STAGES: readonly ReviewStage[] = [
+  'initial_screening',
+  'technical_review',
+  'business_impact_review',
+];
+
+export function isBlindStage(stage: ReviewStage | null): boolean {
+  return stage !== null && (BLIND_STAGES as readonly string[]).includes(stage);
+}
+
 export const STAGE_LABELS: Record<ReviewStage, string> = {
   initial_screening: 'Initial Screening',
   technical_review: 'Technical Review',

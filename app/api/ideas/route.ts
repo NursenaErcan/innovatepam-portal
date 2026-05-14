@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         description: idea.description,
         category: idea.category,
         status: idea.status,
+        reviewStage: idea.reviewStage,
         customFields: idea.customFields,
         createdAt: idea.createdAt,
         attachments: normalizeAttachmentsForApi(idea.attachments),
@@ -60,8 +61,6 @@ export async function POST(request: NextRequest) {
   const category = String(formData.get("category") ?? "").trim();
   const submissionMode = String(formData.get("submissionMode") ?? "final").trim();
   const rawCustomFields = String(formData.get("customFields") ?? "{}").trim();
-
-  console.log("[POST /api/ideas] Received submissionMode:", submissionMode);
 
   const files = formData
     .getAll("attachment")
@@ -153,6 +152,7 @@ export async function POST(request: NextRequest) {
         description,
         category: category as IdeaCategory,
         status: submissionMode === "draft" ? "draft" : "submitted",
+        reviewStage: submissionMode === "draft" ? null : "initial_screening",
         customFields: customFields ? (customFields as Prisma.InputJsonValue) : undefined,
         submitterId: auth.user.id,
         attachments: {
@@ -166,8 +166,6 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
-    console.log("[POST /api/ideas] Created idea with status:", idea.status);
 
     return NextResponse.json(
       {
