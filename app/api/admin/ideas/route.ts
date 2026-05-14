@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { normalizeAttachmentsForApi } from "@/lib/attachments";
 import { requireRoleFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -10,6 +10,11 @@ export async function GET(request: NextRequest) {
   }
 
   const ideas = await prisma.idea.findMany({
+    where: {
+      status: {
+        not: "draft",
+      },
+    },
     include: {
       submitter: {
         select: {

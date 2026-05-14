@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+﻿import crypto from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
@@ -58,7 +58,10 @@ export async function POST(request: NextRequest) {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
+  const submissionMode = String(formData.get("submissionMode") ?? "final").trim();
   const rawCustomFields = String(formData.get("customFields") ?? "{}").trim();
+
+  console.log("[POST /api/ideas] Received submissionMode:", submissionMode);
 
   const files = formData
     .getAll("attachment")
@@ -149,6 +152,7 @@ export async function POST(request: NextRequest) {
         title,
         description,
         category: category as IdeaCategory,
+        status: submissionMode === "draft" ? "draft" : "submitted",
         customFields: customFields ? (customFields as Prisma.InputJsonValue) : undefined,
         submitterId: auth.user.id,
         attachments: {
@@ -162,6 +166,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    console.log("[POST /api/ideas] Created idea with status:", idea.status);
 
     return NextResponse.json(
       {
